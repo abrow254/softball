@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Link from 'next/link'
 import type { Player } from '@/lib/types'
@@ -10,6 +10,9 @@ import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineu
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
 
 const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'LC', 'RC', 'RF', 'Rover', SIT]
+// Positions a real fielder occupies — duplicates here are worth flagging.
+// SIT and blank are intentionally allowed to repeat.
+const FIELD_POSITIONS = new Set(['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'LC', 'RC', 'RF', 'Rover'])
 
 interface BuilderRow {
   player_id: string
@@ -17,7 +20,7 @@ interface BuilderRow {
   starting_pos: string
 }
 
-type PrintTarget = 'lineup' | 'scorecard'
+type CardTarget = 'lineup' | 'scorecard'
 
 export interface LineupBuilderProps {
   players: Player[]
@@ -35,15 +38,35 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
   const [newRegular, setNewRegular] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Which printable carries the `print-card` class when the print dialog opens.
-  // Only one prints at a time (globals.css hides everything else).
-  const [printTarget, setPrintTarget] = useState<PrintTarget>('lineup')
+  // Single source of truth for both the on-screen preview and which printable
+  // carries `print-card`. The other printable is display:none (also in print),
+  // so only the selected sheet ever prints (globals.css: one card at a time).
+  const [target, setTarget] = useState<CardTarget>('lineup')
+  const [previewOpen, setPreviewOpen] = useState(false)
+
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  // Native drag is desktop-only; on touch it just fights text selection.
+  const [canDrag, setCanDrag] = useState(false)
+  useEffect(() => {
+    setCanDrag(window.matchMedia('(pointer: fine)').matches)
+  }, [])
 
   const availablePlayers = useMemo(
     () => players.filter((p) => !rows.some((r) => r.player_id === p.id)),
     [players, rows],
   )
+
+  // Non-blocking validity hints: starters with no position, and field
+  // positions assigned to more than one player.
+  const summary = useMemo(() => {
+    const unset = rows.filter((r) => !r.starting_pos).length
+    const counts = new Map<string, number>()
+    for (const r of rows) {
+      if (FIELD_POSITIONS.has(r.starting_pos)) counts.set(r.starting_pos, (counts.get(r.starting_pos) ?? 0) + 1)
+    }
+    const dupes = [...counts.entries()].filter(([, n]) => n > 1).map(([pos]) => pos)
+    return { batters: rows.length, unset, dupes }
+  }, [rows])
 
   function addRow(playerId: string) {
     const player = players.find((p) => p.id === playerId)
@@ -70,7 +93,6 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
     })
   }
 
-  // Desktop drag-and-drop. Touch falls back to the up/down buttons.
   function onDrop(targetIndex: number) {
     setRows((rs) => {
       if (dragIndex === null || dragIndex === targetIndex) return rs
@@ -95,10 +117,10 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
     }
   }
 
-  // flushSync so the chosen printable has `print-card` in the DOM *before* the
+  // flushSync so the chosen printable is un-hidden in the DOM *before* the
   // synchronous print dialog opens.
-  function print(target: PrintTarget) {
-    flushSync(() => setPrintTarget(target))
+  function print(which: CardTarget) {
+    flushSync(() => setTarget(which))
     window.print()
   }
 
@@ -113,11 +135,13 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
     starting_pos: r.starting_pos,
   }))
 
+  const empty = rows.length === 0
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       {/* ---- Game header (no-print) ---- */}
       <section className="no-print rounded-lg border border-field-line bg-field-paper p-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-sm">
             <span className="mb-1 block text-field-muted">Opponent</span>
             <input
@@ -125,7 +149,7 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
               value={opponent}
               onChange={(e) => setOpponent(e.target.value)}
               placeholder="Sharks"
-              className="w-full rounded-md border border-field-line-strong bg-white px-2 py-1.5"
+              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3"
             />
           </label>
           <label className="text-sm">
@@ -134,7 +158,7 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
               type="date"
               value={gameDate}
               onChange={(e) => setGameDate(e.target.value)}
-              className="w-full rounded-md border border-field-line-strong bg-white px-2 py-1.5"
+              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3"
             />
           </label>
         </div>
@@ -142,29 +166,35 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
 
       {/* ---- Batting order (no-print) ---- */}
       <section className="no-print">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">Batting order</h2>
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-field-muted">Batting order</h2>
+        <p className="mb-2 text-xs text-field-muted">
+          {canDrag ? 'Drag rows to reorder, or' : 'Use'} <span aria-hidden>▲▼</span> to move a player. Set{' '}
+          <strong>{SIT}</strong> for anyone not batting.
+        </p>
         <ol className="space-y-2">
           {rows.map((row, i) => (
             <li
               key={row.player_id}
-              draggable
-              onDragStart={() => setDragIndex(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => onDrop(i)}
+              draggable={canDrag}
+              onDragStart={() => canDrag && setDragIndex(i)}
+              onDragOver={(e) => canDrag && e.preventDefault()}
+              onDrop={() => canDrag && onDrop(i)}
               className={[
-                'flex items-center gap-2 rounded-lg border border-field-line bg-field-paper px-2.5 py-2',
+                'flex items-center gap-2 rounded-lg border border-field-line bg-field-paper py-1.5 pl-2.5 pr-1.5',
                 dragIndex === i ? 'opacity-50' : '',
               ].join(' ')}
             >
-              <span className="hidden w-5 cursor-grab select-none text-field-muted sm:block" aria-hidden>
-                ⠿
-              </span>
-              <span className="w-6 text-right font-semibold tabular text-field-grass">{i + 1}</span>
-              <span className="flex-1 truncate font-medium text-field-ink">{row.name}</span>
+              {canDrag && (
+                <span className="w-4 cursor-grab select-none text-field-muted" aria-hidden>
+                  ⠿
+                </span>
+              )}
+              <span className="w-6 shrink-0 text-right font-semibold tabular text-field-grass">{i + 1}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-field-ink">{row.name}</span>
               <select
                 value={row.starting_pos}
                 onChange={(e) => setPos(row.player_id, e.target.value)}
-                className="rounded-md border border-field-line-strong bg-white px-1.5 py-1 text-sm"
+                className="h-11 shrink-0 rounded-md border border-field-line-strong bg-white px-1.5 text-sm"
                 aria-label={`Position for ${row.name}`}
               >
                 <option value="">Pos</option>
@@ -174,30 +204,28 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
                   </option>
                 ))}
               </select>
-              <div className="flex flex-col">
-                <button
-                  type="button"
-                  onClick={() => move(i, -1)}
-                  disabled={i === 0}
-                  className="px-1 leading-none text-field-muted hover:text-field-ink disabled:opacity-30"
-                  aria-label={`Move ${row.name} up`}
-                >
-                  ▲
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(i, 1)}
-                  disabled={i === rows.length - 1}
-                  className="px-1 leading-none text-field-muted hover:text-field-ink disabled:opacity-30"
-                  aria-label={`Move ${row.name} down`}
-                >
-                  ▼
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                className="flex h-11 w-9 shrink-0 items-center justify-center rounded-md text-field-muted hover:bg-field-cream disabled:opacity-25"
+                aria-label={`Move ${row.name} up`}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === rows.length - 1}
+                className="flex h-11 w-9 shrink-0 items-center justify-center rounded-md text-field-muted hover:bg-field-cream disabled:opacity-25"
+                aria-label={`Move ${row.name} down`}
+              >
+                ▼
+              </button>
               <button
                 type="button"
                 onClick={() => removeRow(row.player_id)}
-                className="px-1 text-field-clay hover:underline"
+                className="ml-1 flex h-11 w-9 shrink-0 items-center justify-center rounded-md text-field-clay hover:bg-field-clay/10"
                 aria-label={`Remove ${row.name}`}
               >
                 ✕
@@ -205,25 +233,23 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
             </li>
           ))}
         </ol>
-        {rows.length === 0 && (
+        {empty && (
           <p className="rounded-lg border border-dashed border-field-line-strong bg-field-paper px-4 py-6 text-center text-sm text-field-muted">
             No players yet. Add someone below to start the lineup.
           </p>
         )}
-        <p className="mt-2 text-xs text-field-muted">
-          Drag to reorder on desktop, or use ▲▼ on mobile. Set <strong>{SIT}</strong> for anyone who isn&apos;t batting.
-        </p>
       </section>
 
       {/* ---- Add players (no-print) ---- */}
-      <section className="no-print flex flex-wrap items-end gap-4 rounded-lg border border-field-line bg-field-paper p-4">
-        <div className="flex items-end gap-2">
-          <label className="text-sm">
+      <section className="no-print space-y-4 rounded-lg border border-field-line bg-field-paper p-4">
+        {/* Add an existing roster player — the common case. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="flex-1 text-sm">
             <span className="mb-1 block text-field-muted">Add player</span>
             <select
               value={addPlayerId}
               onChange={(e) => setAddPlayerId(e.target.value)}
-              className="rounded-md border border-field-line-strong bg-white px-2 py-1.5"
+              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-2"
             >
               <option value="">Select…</option>
               {availablePlayers.map((p) => (
@@ -238,69 +264,142 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
             type="button"
             disabled={!addPlayerId}
             onClick={() => addRow(addPlayerId)}
-            className="rounded-md border border-field-grass px-3 py-1.5 text-sm font-medium text-field-grass hover:bg-field-grass/5 disabled:opacity-50"
+            className="h-11 rounded-md border border-field-grass px-4 font-medium text-field-grass hover:bg-field-grass/5 disabled:opacity-50 sm:w-auto"
           >
             Add
           </button>
         </div>
 
-        <div className="flex items-end gap-2">
-          <label className="text-sm">
+        {/* Create a brand-new player. */}
+        <div className="space-y-2 border-t border-field-line pt-3">
+          <label className="block text-sm">
             <span className="mb-1 block text-field-muted">New player</span>
             <input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Name"
-              className="rounded-md border border-field-line-strong bg-white px-2 py-1.5"
+              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3 sm:w-64"
             />
           </label>
-          <label className="flex items-center gap-1.5 pb-2 text-sm text-field-muted">
-            <input type="checkbox" checked={newRegular} onChange={(e) => setNewRegular(e.target.checked)} />
-            Regular
-          </label>
-          <button
-            type="button"
-            disabled={!newName.trim()}
-            onClick={handleCreatePlayer}
-            className="rounded-md border border-field-grass px-3 py-1.5 text-sm font-medium text-field-grass hover:bg-field-grass/5 disabled:opacity-50"
-          >
-            Create &amp; add
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex overflow-hidden rounded-md border border-field-line-strong" role="group" aria-label="Player type">
+              <button
+                type="button"
+                onClick={() => setNewRegular(true)}
+                className={`h-11 px-4 text-sm font-medium ${newRegular ? 'bg-field-grass text-white' : 'bg-white text-field-muted'}`}
+              >
+                Regular
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewRegular(false)}
+                className={`h-11 px-4 text-sm font-medium ${!newRegular ? 'bg-field-grass text-white' : 'bg-white text-field-muted'}`}
+              >
+                Ringer
+              </button>
+            </div>
+            <button
+              type="button"
+              disabled={!newName.trim()}
+              onClick={handleCreatePlayer}
+              className="h-11 rounded-md border border-field-grass px-4 font-medium text-field-grass hover:bg-field-grass/5 disabled:opacity-50"
+            >
+              Create &amp; add
+            </button>
+          </div>
         </div>
       </section>
 
       {error && <p className="no-print text-sm text-field-clay">{error}</p>}
 
-      {/* ---- Print actions (no-print) ---- */}
-      <div className="no-print flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          disabled={rows.length === 0}
-          onClick={() => print('lineup')}
-          className="rounded-md bg-field-grass px-4 py-2 font-medium text-white hover:bg-field-grass/90 disabled:opacity-50"
-        >
-          Print lineup card
-        </button>
-        <button
-          type="button"
-          disabled={rows.length === 0}
-          onClick={() => print('scorecard')}
-          className="rounded-md border border-field-grass px-4 py-2 font-medium text-field-grass hover:bg-field-grass/5 disabled:opacity-50"
-        >
-          Print blank scorecard
-        </button>
-        <Link href="/games" className="text-sm text-field-muted hover:text-field-ink">
-          Back to games
-        </Link>
-      </div>
+      {/* ---- Preview (no-print, collapsed by default) ---- */}
+      <section className="no-print">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setPreviewOpen((o) => !o)}
+            disabled={empty}
+            className="text-sm font-medium text-field-grass hover:underline disabled:opacity-50"
+          >
+            {previewOpen ? 'Hide preview' : 'Show preview'}
+          </button>
+          {previewOpen && (
+            <div className="inline-flex overflow-hidden rounded-md border border-field-line-strong" role="group" aria-label="Preview sheet">
+              <button
+                type="button"
+                onClick={() => setTarget('lineup')}
+                className={`h-9 px-3 text-sm font-medium ${target === 'lineup' ? 'bg-field-grass text-white' : 'bg-white text-field-muted'}`}
+              >
+                Lineup card
+              </button>
+              <button
+                type="button"
+                onClick={() => setTarget('scorecard')}
+                className={`h-9 px-3 text-sm font-medium ${target === 'scorecard' ? 'bg-field-grass text-white' : 'bg-white text-field-muted'}`}
+              >
+                Scorecard
+              </button>
+            </div>
+          )}
+        </div>
+        {previewOpen && !empty && (
+          <div className="mt-3 overflow-x-auto rounded-lg border border-field-line bg-field-paper p-4">
+            {target === 'lineup' ? (
+              <BattingLineupCard opponent={opponent || null} gameDate={gameDate || null} rows={lineupRows} />
+            ) : (
+              <PrintableCard opponent={opponent || null} gameDate={gameDate || null} rows={scorecardRows} />
+            )}
+          </div>
+        )}
+      </section>
 
-      {/* ---- Printables. Only the active one carries `print-card`. ---- */}
-      <div className={printTarget === 'lineup' ? '' : 'hidden'}>
+      {/* ---- Printables. Active one is print:block; the other never prints. ---- */}
+      <div className={`hidden ${target === 'lineup' ? 'print:block' : 'print:hidden'}`} aria-hidden>
         <BattingLineupCard opponent={opponent || null} gameDate={gameDate || null} rows={lineupRows} />
       </div>
-      <div className={printTarget === 'scorecard' ? '' : 'hidden'}>
+      <div className={`hidden ${target === 'scorecard' ? 'print:block' : 'print:hidden'}`} aria-hidden>
         <PrintableCard opponent={opponent || null} gameDate={gameDate || null} rows={scorecardRows} />
+      </div>
+
+      {/* ---- Sticky print bar (no-print) ---- */}
+      <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-field-line bg-field-cream/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-field-cream/80">
+        <div className="mx-auto max-w-6xl space-y-2">
+          {!empty && (
+            <p className="text-center text-xs text-field-muted">
+              {summary.batters} batter{summary.batters === 1 ? '' : 's'}
+              {summary.unset > 0 && <> · {summary.unset} position{summary.unset === 1 ? '' : 's'} unset</>}
+              {summary.dupes.length > 0 && (
+                <span className="text-field-clay"> · {summary.dupes.join(', ')} assigned twice</span>
+              )}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={empty}
+              onClick={() => print('lineup')}
+              className="flex-1 rounded-md bg-field-grass px-3 py-2.5 text-center font-medium leading-tight text-white hover:bg-field-grass/90 disabled:opacity-50"
+            >
+              Print lineup card
+              <span className="block text-[11px] font-normal text-white/80">Batting order &amp; positions</span>
+            </button>
+            <button
+              type="button"
+              disabled={empty}
+              onClick={() => print('scorecard')}
+              className="flex-1 rounded-md border border-field-grass px-3 py-2.5 text-center font-medium leading-tight text-field-grass hover:bg-field-grass/5 disabled:opacity-50"
+            >
+              Print blank scorecard
+              <span className="block text-[11px] font-normal text-field-muted">7-inning grid to fill in</span>
+            </button>
+          </div>
+          <div className="text-center">
+            <Link href="/games" className="text-xs text-field-muted hover:text-field-ink">
+              Back to games
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   )

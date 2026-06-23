@@ -43,7 +43,7 @@ export function BattingLineupCard({
           >
             <span className="w-7 text-right font-bold tabular text-field-grass">{r.batting_order}</span>
             <span className="flex-1 font-semibold">{r.name}</span>
-            <span className="w-16 text-right text-base font-medium text-field-muted">{r.starting_pos}</span>
+            <span className="w-16 text-right text-base font-medium text-field-muted">{r.starting_pos || '—'}</span>
           </li>
         ))}
       </ol>
