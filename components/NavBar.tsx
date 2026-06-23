@@ -30,6 +30,9 @@ export async function NavBar() {
           <Link href="/standings" className="text-white/85 hover:text-white">
             Standings
           </Link>
+          <Link href="/schedule" className="text-white/85 hover:text-white">
+            Schedule
+          </Link>
           {isAdmin && (
             <>
               <Link href="/lineup" className="text-white/85 hover:text-white">

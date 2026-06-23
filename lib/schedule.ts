@@ -6,6 +6,7 @@ import 'server-only'
 // league; we pull just the cells involving our team.
 
 const SCHEDULE_URL = 'https://www.forestcityssc.ca/league/99619/schedule'
+export const SCHEDULE_SOURCE_URL = SCHEDULE_URL
 const OUR_TEAM = 'The Softball Team'
 
 export interface ScheduleGame {
