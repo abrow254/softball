@@ -166,6 +166,7 @@ export function StatTable<T extends BaseRow>({
   defaultSortKey,
   defaultDir = 'desc',
   split = false,
+  sections,
   linkBase,
   rowKey = (row) => row.player_id,
   highlightLeaders = false,
@@ -177,6 +178,8 @@ export function StatTable<T extends BaseRow>({
   defaultSortKey: keyof T
   defaultDir?: 'asc' | 'desc'
   split?: boolean
+  // Custom labeled sections (rendered in order). Overrides `split`.
+  sections?: { label: string; filter: (row: T) => boolean }[]
   linkBase?: string
   rowKey?: (row: T) => string
   highlightLeaders?: boolean
@@ -210,8 +213,6 @@ export function StatTable<T extends BaseRow>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sortKey, dir, highlightLeaders, isRateSort, qualifyMinAb])
 
-  const regulars = useMemo(() => sorted.filter((r) => r.is_regular), [sorted])
-  const ringers = useMemo(() => sorted.filter((r) => !r.is_regular), [sorted])
   const leaders = useMemo(
     () => (highlightLeaders ? leaderValues(rows, cols, qualifyMinAb) : undefined),
     [rows, cols, highlightLeaders, qualifyMinAb],
@@ -226,7 +227,17 @@ export function StatTable<T extends BaseRow>({
     )
   }
 
-  if (!split) {
+  // Resolve sections: explicit `sections` wins; else `split` → Regulars/Ringers.
+  const sectionList =
+    sections ??
+    (split
+      ? [
+          { label: 'Regulars', filter: (r: T) => r.is_regular },
+          { label: 'Ringers', filter: (r: T) => !r.is_regular },
+        ]
+      : null)
+
+  if (!sectionList) {
     return (
       <Table rows={sorted} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
     )
@@ -234,18 +245,16 @@ export function StatTable<T extends BaseRow>({
 
   return (
     <div className="space-y-8">
-      {regulars.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">Regulars</h2>
-          <Table rows={regulars} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
-        </section>
-      )}
-      {ringers.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">Ringers</h2>
-          <Table rows={ringers} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
-        </section>
-      )}
+      {sectionList.map(({ label, filter }) => {
+        const sectionRows = sorted.filter(filter)
+        if (sectionRows.length === 0) return null
+        return (
+          <section key={label}>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">{label}</h2>
+            <Table rows={sectionRows} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
+          </section>
+        )
+      })}
     </div>
   )
 }

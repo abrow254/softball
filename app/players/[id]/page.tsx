@@ -47,8 +47,8 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
         </Link>
         <div className="mt-2 flex flex-wrap items-baseline gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-field-ink">{career.name}</h1>
-          <span className="rounded-full bg-field-grass/10 px-2 py-0.5 text-xs font-medium text-field-grass">
-            {career.is_regular ? 'Regular' : 'Ringer'}
+          <span className="rounded-full bg-field-grass/10 px-2 py-0.5 text-xs font-medium capitalize text-field-grass">
+            {career.tier}
           </span>
           <span className="text-sm text-field-muted">
             {career.seasons_played} {career.seasons_played === 1 ? 'season' : 'seasons'} · {career.ab} career AB

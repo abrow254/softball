@@ -14,7 +14,8 @@ export default async function AllTimePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">All-time stats</h1>
         <p className="mt-1 text-sm text-field-muted">
-          Career totals across every season. Tap a name for a player&rsquo;s full history.
+          Career totals across every season. Players are grouped by tenure (career AB vs. the all-time leader):
+          Core, Regulars, then Ringers. Tap a name for a player&rsquo;s full history.
         </p>
       </div>
 
@@ -22,7 +23,11 @@ export default async function AllTimePage() {
         rows={rows}
         cols={CAREER_COLS}
         defaultSortKey="avg"
-        split
+        sections={[
+          { label: 'Core', filter: (r) => r.tier === 'core' },
+          { label: 'Regulars', filter: (r) => r.tier === 'regular' },
+          { label: 'Ringers', filter: (r) => r.tier === 'ringer' },
+        ]}
         linkBase="/players"
         highlightLeaders
         qualifyMinAb={30}

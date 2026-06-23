@@ -107,10 +107,13 @@ export interface SeasonStatRow {
 }
 
 // One row of the career_stats view: all-time totals across every season.
+export type CareerTier = 'core' | 'regular' | 'ringer'
+
 export interface CareerStatRow {
   player_id: string
   name: string
   is_regular: boolean
+  tier: CareerTier
   gp: number
   seasons_played: number
   singles: number
