@@ -14,9 +14,7 @@ export async function NavBar() {
           href="/stats"
           className="flex items-center gap-2 font-display text-lg font-semibold uppercase tracking-wide text-white"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
-            <Image src="/favicon-96x96.png" alt="" width={26} height={26} className="h-[26px] w-[26px]" priority />
-          </span>
+          <Image src="/favicon-96x96.png" alt="" width={28} height={28} className="h-7 w-7" priority />
           <span>
             The <span className="text-field-gold">Softball</span> Team
           </span>
