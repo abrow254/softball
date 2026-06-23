@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import Link from 'next/link'
 import type { Player } from '@/lib/types'
@@ -8,6 +8,10 @@ import { SIT } from '@/lib/entry'
 import { createPlayerAction } from '@/app/games/actions'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
+
+// Persist just the lineup (order + positions) across visits — opponent/game
+// label change every week, so those aren't restored.
+const STORAGE_KEY = 'lineup-builder-rows-v1'
 
 const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'Rover', SIT]
 // Positions a real fielder occupies — duplicates here are worth flagging.
@@ -50,6 +54,55 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
   useEffect(() => {
     setCanDrag(window.matchMedia('(pointer: fine)').matches)
   }, [])
+
+  // Restore the last saved lineup on mount, dropping any players that no longer
+  // exist and refreshing names from the current roster. Only persist after this
+  // runs, so the initial empty state never clobbers a saved lineup.
+  const hydrated = useRef(false)
+  const [restored, setRestored] = useState(false)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const saved = JSON.parse(raw) as { player_id: string; starting_pos: string }[]
+        const nameById = new Map(initialPlayers.map((p) => [p.id, p.name]))
+        const next = saved
+          .filter((s) => nameById.has(s.player_id))
+          .map((s) => ({ player_id: s.player_id, name: nameById.get(s.player_id) as string, starting_pos: s.starting_pos || '' }))
+        if (next.length > 0) {
+          setRows(next)
+          setRestored(true)
+        }
+      }
+    } catch {
+      // ignore corrupt/unavailable storage
+    }
+    hydrated.current = true
+    // initialPlayers is stable for the page's lifetime
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated.current) return
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(rows.map((r) => ({ player_id: r.player_id, starting_pos: r.starting_pos }))),
+      )
+    } catch {
+      // ignore quota/unavailable storage
+    }
+  }, [rows])
+
+  function clearLineup() {
+    setRows([])
+    setRestored(false)
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+  }
 
   const availablePlayers = useMemo(
     () => players.filter((p) => !rows.some((r) => r.player_id === p.id)),
@@ -175,8 +228,22 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
 
       {/* ---- Batting order (no-print) ---- */}
       <section className="no-print">
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-field-muted">Batting order</h2>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Batting order</h2>
+          {!empty && (
+            <button
+              type="button"
+              onClick={clearLineup}
+              className="text-xs font-medium text-field-clay hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
         <p className="mb-2 text-xs text-field-muted">
+          {restored ? (
+            <span className="text-field-grass">Loaded your last lineup. </span>
+          ) : null}
           {canDrag ? 'Drag rows to reorder, or' : 'Use'} <span aria-hidden>▲▼</span> to move a player. Set{' '}
           <strong>{SIT}</strong> for anyone not batting.
         </p>
