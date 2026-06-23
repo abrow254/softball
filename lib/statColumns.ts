@@ -1,12 +1,11 @@
 import type { Col } from '@/components/StatTable'
 import type { SeasonStatRow, CareerStatRow, PlayerSeasonRow } from '@/lib/types'
 
-// Season grid. (GP, PA, K, RBI, BB, OPS intentionally omitted per team pref.)
+// Season grid. (GP, PA, K, RBI, BB, OPS, R intentionally omitted per team pref.)
 export const SEASON_COLS: Col<SeasonStatRow>[] = [
   { key: 'name', label: 'Player', kind: 'text' },
   { key: 'games_missed', label: 'GM', kind: 'int', title: 'Games missed' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
-  { key: 'runs', label: 'R', kind: 'int', title: 'Runs' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
   { key: 'singles', label: '1B', kind: 'int' },
   { key: 'doubles', label: '2B', kind: 'int' },
@@ -25,7 +24,6 @@ export const CAREER_COLS: Col<CareerStatRow>[] = [
   { key: 'name', label: 'Player', kind: 'text' },
   { key: 'seasons_played', label: 'Sea', kind: 'int', title: 'Seasons played' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
-  { key: 'runs', label: 'R', kind: 'int', title: 'Runs' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
   { key: 'singles', label: '1B', kind: 'int' },
   { key: 'doubles', label: '2B', kind: 'int' },
@@ -43,7 +41,6 @@ export const CAREER_COLS: Col<CareerStatRow>[] = [
 export const PLAYER_SEASON_COLS: Col<PlayerSeasonRow>[] = [
   { key: 'season_label', label: 'Season', kind: 'text' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
-  { key: 'runs', label: 'R', kind: 'int', title: 'Runs' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
   { key: 'singles', label: '1B', kind: 'int' },
   { key: 'doubles', label: '2B', kind: 'int' },
