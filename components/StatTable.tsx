@@ -73,6 +73,7 @@ function Table<T extends BaseRow>({
   linkBase,
   rowKey,
   leaders,
+  dimmed,
 }: {
   rows: T[]
   cols: Col<T>[]
@@ -82,6 +83,7 @@ function Table<T extends BaseRow>({
   linkBase?: string
   rowKey: (row: T) => string
   leaders?: Partial<Record<keyof T, number>>
+  dimmed?: (row: T) => boolean
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-field-line">
@@ -110,7 +112,13 @@ function Table<T extends BaseRow>({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-t border-field-line even:bg-field-cream/30">
+            <tr
+              key={rowKey(row)}
+              className={[
+                'border-t border-field-line even:bg-field-cream/30',
+                dimmed?.(row) ? 'opacity-45' : '',
+              ].join(' ')}
+            >
               {cols.map((col, i) => {
                 const isLeader =
                   leaders != null &&
@@ -161,7 +169,7 @@ export function StatTable<T extends BaseRow>({
   linkBase,
   rowKey = (row) => row.player_id,
   highlightLeaders = false,
-  rateMinAb = 15,
+  qualifyMinAb = 15,
   emptyMessage = 'Nothing to show yet.',
 }: {
   rows: T[]
@@ -172,7 +180,7 @@ export function StatTable<T extends BaseRow>({
   linkBase?: string
   rowKey?: (row: T) => string
   highlightLeaders?: boolean
-  rateMinAb?: number
+  qualifyMinAb?: number
   emptyMessage?: string
 }) {
   const [sortKey, setSortKey] = useState<keyof T>(defaultSortKey)
@@ -187,13 +195,28 @@ export function StatTable<T extends BaseRow>({
     }
   }
 
-  const sorted = useMemo(() => sortRows(rows, sortKey, dir), [rows, sortKey, dir])
+  // When sorting by a rate stat, players below the AB qualifier drop to the
+  // bottom (and render dimmed) so small samples never top a rate leaderboard.
+  const activeKind = useMemo(() => cols.find((c) => c.key === sortKey)?.kind, [cols, sortKey])
+  const isRateSort = activeKind === 'rate' || activeKind === 'pct'
+  const qualifies = (r: T) => r.ab >= qualifyMinAb
+
+  const sorted = useMemo(() => {
+    const s = sortRows(rows, sortKey, dir)
+    if (highlightLeaders && isRateSort) {
+      return [...s.filter(qualifies), ...s.filter((r) => !qualifies(r))]
+    }
+    return s
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, sortKey, dir, highlightLeaders, isRateSort, qualifyMinAb])
+
   const regulars = useMemo(() => sorted.filter((r) => r.is_regular), [sorted])
   const ringers = useMemo(() => sorted.filter((r) => !r.is_regular), [sorted])
   const leaders = useMemo(
-    () => (highlightLeaders ? leaderValues(rows, cols, rateMinAb) : undefined),
-    [rows, cols, highlightLeaders, rateMinAb],
+    () => (highlightLeaders ? leaderValues(rows, cols, qualifyMinAb) : undefined),
+    [rows, cols, highlightLeaders, qualifyMinAb],
   )
+  const dimmed = highlightLeaders && isRateSort ? (r: T) => !qualifies(r) : undefined
 
   if (rows.length === 0) {
     return (
@@ -205,7 +228,7 @@ export function StatTable<T extends BaseRow>({
 
   if (!split) {
     return (
-      <Table rows={sorted} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} />
+      <Table rows={sorted} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
     )
   }
 
@@ -214,13 +237,13 @@ export function StatTable<T extends BaseRow>({
       {regulars.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">Regulars</h2>
-          <Table rows={regulars} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} />
+          <Table rows={regulars} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
         </section>
       )}
       {ringers.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">Ringers</h2>
-          <Table rows={ringers} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} />
+          <Table rows={ringers} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
         </section>
       )}
     </div>

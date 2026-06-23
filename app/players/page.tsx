@@ -25,13 +25,14 @@ export default async function AllTimePage() {
         split
         linkBase="/players"
         highlightLeaders
-        rateMinAb={15}
+        qualifyMinAb={30}
         emptyMessage="No stats recorded yet."
       />
 
       <p className="text-xs text-field-muted">
         Tap a column header to sort. <span className="rounded bg-field-gold/30 px-1 font-semibold">Gold</span> marks the
-        all-time leader in a category (rate stats require 15+ AB). House rules: OBP counts FC and divides by AB; OPS is AVG + SLG.
+        all-time leader. For rate stats (AVG, OBP, SLG, OPS, ISO, XBH%), players under 30 career AB are dimmed and sorted
+        to the bottom so small samples don&rsquo;t top the board. House rules: OBP counts FC and divides by AB; OPS is AVG + SLG.
       </p>
     </div>
   )

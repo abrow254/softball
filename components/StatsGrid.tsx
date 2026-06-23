@@ -14,7 +14,7 @@ export function StatsGrid({ rows }: { rows: SeasonStatRow[] }) {
       split
       linkBase="/players"
       highlightLeaders
-      rateMinAb={10}
+      qualifyMinAb={10}
       emptyMessage="No games recorded for this season yet."
     />
   )
