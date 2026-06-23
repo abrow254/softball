@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth'
 import { listSeasons, getCurrentSeason, getSeasonStats } from '@/lib/db'
 import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
@@ -11,8 +9,6 @@ export default async function StatsPage({
 }: {
   searchParams: { season?: string }
 }) {
-  const current = await getCurrentUser()
-  if (!current) redirect('/login')
 
   const seasons = await listSeasons()
 
