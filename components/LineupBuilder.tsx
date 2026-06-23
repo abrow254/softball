@@ -34,7 +34,7 @@ export interface LineupBuilderProps {
 export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: LineupBuilderProps) {
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
   const [rows, setRows] = useState<BuilderRow[]>(defaultRows)
-  const [gameLabel, setGameLabel] = useState('')
+  const [gameDate, setGameDate] = useState('')
   const [opponent, setOpponent] = useState('')
 
   const [addPlayerId, setAddPlayerId] = useState('')
@@ -190,9 +190,17 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
 
   const empty = rows.length === 0
 
-  // "Game 4 v. The Garbage Cans" — falls back gracefully as fields fill in.
+  // "v. The Garbage Cans · Jun 26, 2026" — falls back gracefully as fields
+  // fill in. `T00:00` keeps the date in local time (no UTC day-shift).
+  const dateLabel = gameDate
+    ? new Date(`${gameDate}T00:00`).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : ''
   const title =
-    [gameLabel.trim(), opponent.trim() ? `v. ${opponent.trim()}` : ''].filter(Boolean).join(' ') ||
+    [opponent.trim() ? `v. ${opponent.trim()}` : '', dateLabel].filter(Boolean).join(' · ') ||
     'The Softball Team'
 
   return (
@@ -201,12 +209,11 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
       <section className="no-print rounded-lg border border-field-line bg-field-paper p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-sm">
-            <span className="mb-1 block text-field-muted">Game</span>
+            <span className="mb-1 block text-field-muted">Date</span>
             <input
-              type="text"
-              value={gameLabel}
-              onChange={(e) => setGameLabel(e.target.value)}
-              placeholder="Game 4"
+              type="date"
+              value={gameDate}
+              onChange={(e) => setGameDate(e.target.value)}
               className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3"
             />
           </label>
