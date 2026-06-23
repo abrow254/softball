@@ -79,6 +79,24 @@ and you're in.
 
 ---
 
+## Deploying to softball.beer
+
+Production domain: **https://softball.beer** (already wired into the app's
+`metadataBase`/OpenGraph in `app/layout.tsx`).
+
+1. Push this repo to GitHub and import it as a **Vercel** project.
+2. In Vercel → **Settings → Domains**, add `softball.beer` (and `www` if you want it)
+   and follow the DNS instructions from your registrar.
+3. In Vercel → **Settings → Environment Variables**, add the same keys as
+   `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `ANTHROPIC_API_KEY`, optionally `ANTHROPIC_MODEL`).
+4. In **Supabase → Authentication → URL Configuration**, set **Site URL** to
+   `https://softball.beer` and add it to the redirect allow-list, so signup
+   confirmation emails link back to the live site. (For a small team you can also
+   turn off email confirmation under **Authentication → Providers → Email**.)
+
+---
+
 ## Verifying the math
 
 ```bash
