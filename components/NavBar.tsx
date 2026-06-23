@@ -28,9 +28,14 @@ export async function NavBar() {
             All-Time
           </Link>
           {isAdmin && (
-            <Link href="/games" className="text-white/85 hover:text-white">
-              Games
-            </Link>
+            <>
+              <Link href="/lineup" className="text-white/85 hover:text-white">
+                Lineup
+              </Link>
+              <Link href="/games" className="text-white/85 hover:text-white">
+                Games
+              </Link>
+            </>
           )}
           {current ? (
             <div className="flex items-center gap-3">
