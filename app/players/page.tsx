@@ -24,9 +24,9 @@ export default async function AllTimePage() {
         cols={CAREER_COLS}
         defaultSortKey="avg"
         sections={[
-          { label: 'Core', filter: (r) => r.tier === 'core' },
-          { label: 'Regulars', filter: (r) => r.tier === 'regular' },
-          { label: 'Ringers', filter: (r) => r.tier === 'ringer' },
+          { label: 'Core', field: 'tier', equals: 'core' },
+          { label: 'Regulars', field: 'tier', equals: 'regular' },
+          { label: 'Ringers', field: 'tier', equals: 'ringer' },
         ]}
         linkBase="/players"
         highlightLeaders

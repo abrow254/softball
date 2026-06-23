@@ -72,7 +72,7 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
           cols={PLAYER_SEASON_COLS}
           defaultSortKey="year"
           defaultDir="asc"
-          rowKey={(r) => r.season_id}
+          rowKeyField="season_id"
           emptyMessage="No seasons recorded."
         />
       </section>

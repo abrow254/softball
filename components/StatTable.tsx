@@ -168,7 +168,7 @@ export function StatTable<T extends BaseRow>({
   split = false,
   sections,
   linkBase,
-  rowKey = (row) => row.player_id,
+  rowKeyField = 'player_id' as keyof T,
   highlightLeaders = false,
   qualifyMinAb = 15,
   emptyMessage = 'Nothing to show yet.',
@@ -178,14 +178,17 @@ export function StatTable<T extends BaseRow>({
   defaultSortKey: keyof T
   defaultDir?: 'asc' | 'desc'
   split?: boolean
-  // Custom labeled sections (rendered in order). Overrides `split`.
-  sections?: { label: string; filter: (row: T) => boolean }[]
+  // Custom labeled sections, rendered in order (overrides `split`). Kept
+  // serializable (field + value, not a function) so server components can
+  // pass it across the RSC boundary.
+  sections?: { label: string; field: keyof T; equals: string | number | boolean }[]
   linkBase?: string
-  rowKey?: (row: T) => string
+  rowKeyField?: keyof T
   highlightLeaders?: boolean
   qualifyMinAb?: number
   emptyMessage?: string
 }) {
+  const rowKey = (row: T) => String(row[rowKeyField])
   const [sortKey, setSortKey] = useState<keyof T>(defaultSortKey)
   const [dir, setDir] = useState<'asc' | 'desc'>(defaultDir)
 
@@ -227,15 +230,17 @@ export function StatTable<T extends BaseRow>({
     )
   }
 
-  // Resolve sections: explicit `sections` wins; else `split` → Regulars/Ringers.
-  const sectionList =
-    sections ??
-    (split
+  // Resolve sections to {label, filter}. Explicit `sections` (field+value) wins;
+  // else `split` → Regulars/Ringers. Filter functions are built here (client
+  // side), never received as props.
+  const sectionList: { label: string; filter: (row: T) => boolean }[] | null = sections
+    ? sections.map((s) => ({ label: s.label, filter: (r: T) => r[s.field] === s.equals }))
+    : split
       ? [
           { label: 'Regulars', filter: (r: T) => r.is_regular },
           { label: 'Ringers', filter: (r: T) => !r.is_regular },
         ]
-      : null)
+      : null
 
   if (!sectionList) {
     return (
