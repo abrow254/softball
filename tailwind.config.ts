@@ -1,6 +1,13 @@
 import type { Config } from 'tailwindcss'
 
-// Brand: clean diamond-dirt palette — cream paper, chalk lines, infield clay.
+// Brand: The Softball Team — Cardinals red + yellow on white, black outlines.
+// The `field` palette keys are kept (ballfield), but mapped to brand roles:
+//   grass       → Cardinals red   (primary: buttons, links, badges, wins)
+//   grass-light → light red       (hover/soft)
+//   clay        → deep red        (errors / remove / loss)
+//   gold        → Cardinals yellow (accent: nav stripe, highlights)
+//   ink         → near-black      (text + outlines)
+//   cream/paper → off-white/white (background + cards)
 const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
@@ -11,20 +18,22 @@ const config: Config = {
     extend: {
       colors: {
         field: {
-          cream: '#F7F4EC',
+          cream: '#FBF9F5',
           paper: '#FFFFFF',
-          ink: '#1C2321',
-          muted: '#6B7280',
-          line: '#E3DECF',
-          'line-strong': '#C7BFA8',
-          grass: '#2F6F4F',
-          'grass-light': '#7FB295',
-          clay: '#B0563A',
+          ink: '#17171A',
+          muted: '#5C6470',
+          line: '#E7E2D8',
+          'line-strong': '#CFC8BA',
+          grass: '#C41E3A', // Cardinals red — primary accent
+          'grass-light': '#E0566C',
+          clay: '#A0162B', // deep red — errors / loss
           'clay-light': '#D08A6E',
-          gold: '#C99A2E',
+          gold: '#FEDB00', // Cardinals yellow — accent
         },
       },
       fontFamily: {
+        // Sporty condensed display (Oswald) for headings + wordmark.
+        display: ['Oswald', 'system-ui', 'sans-serif'],
         sans: ['system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },

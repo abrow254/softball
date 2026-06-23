@@ -7,11 +7,16 @@ export async function NavBar() {
   const isAdmin = current?.role === 'admin'
 
   return (
-    <header className="no-print border-b border-field-line bg-field-paper">
+    <header className="no-print border-b-4 border-field-gold bg-field-paper">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/stats" className="flex items-center gap-2 font-semibold tracking-tight text-field-ink">
+        <Link
+          href="/stats"
+          className="flex items-center gap-2 font-display text-lg font-semibold uppercase tracking-wide text-field-ink"
+        >
           <span aria-hidden>🥎</span>
-          <span>The Softball Team</span>
+          <span>
+            The <span className="text-field-grass">Softball</span> Team
+          </span>
         </Link>
 
         <nav className="flex items-center gap-3 text-sm sm:gap-4">

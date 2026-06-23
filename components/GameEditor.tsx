@@ -323,7 +323,7 @@ export function GameEditor({ mode, seasons, players: initialPlayers, initialGame
             Result:{' '}
             <span
               className={
-                result === 'W' ? 'text-field-grass' : result === 'L' ? 'text-field-clay' : 'text-field-muted'
+                result === 'W' ? 'text-field-grass' : 'text-field-muted'
               }
             >
               {result === 'W' ? 'Win' : result === 'L' ? 'Loss' : 'Draw'}

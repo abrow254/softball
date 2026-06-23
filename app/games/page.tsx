@@ -69,7 +69,7 @@ export default async function GamesPage({ searchParams }: { searchParams: { seas
                             r === 'W'
                               ? 'font-semibold text-field-grass'
                               : r === 'L'
-                                ? 'font-semibold text-field-clay'
+                                ? 'font-semibold text-field-muted'
                                 : 'text-field-muted'
                           }
                         >
