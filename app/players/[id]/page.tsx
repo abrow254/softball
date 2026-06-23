@@ -20,9 +20,9 @@ function Tile({ label, value, title }: { label: string; value: string; title?: s
 function tiles(c: CareerStatRow) {
   return [
     { label: 'AVG', value: fmt3(c.avg), title: 'hits / ab' },
-    { label: 'OPS', value: fmt3(c.ops), title: 'House rule: AVG + SLG' },
     { label: 'SLG', value: fmt3(c.slg), title: 'tb / ab' },
     { label: 'OBP', value: fmt3(c.obp), title: 'House rule: (hits + fc) / ab' },
+    { label: 'ISO', value: fmt3(c.iso), title: 'slg - avg' },
     { label: 'Hits', value: String(c.hits) },
     { label: 'HR', value: String(c.hr) },
     { label: 'TB', value: String(c.tb), title: 'Total bases' },

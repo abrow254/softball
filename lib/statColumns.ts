@@ -1,12 +1,10 @@
 import type { Col } from '@/components/StatTable'
 import type { SeasonStatRow, CareerStatRow, PlayerSeasonRow } from '@/lib/types'
 
-// Season grid (and player-page season breakdown shares most of this).
+// Season grid. (GP, PA, K, RBI, BB, OPS intentionally omitted per team pref.)
 export const SEASON_COLS: Col<SeasonStatRow>[] = [
   { key: 'name', label: 'Player', kind: 'text' },
-  { key: 'gp', label: 'GP', kind: 'int', title: 'Games played' },
   { key: 'games_missed', label: 'GM', kind: 'int', title: 'Games missed' },
-  { key: 'pa', label: 'PA', kind: 'int', title: 'Plate appearances (house rule: runs + hits + bb + hbp + roe)' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
   { key: 'runs', label: 'R', kind: 'int', title: 'Runs' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
@@ -14,24 +12,18 @@ export const SEASON_COLS: Col<SeasonStatRow>[] = [
   { key: 'doubles', label: '2B', kind: 'int' },
   { key: 'triples', label: '3B', kind: 'int' },
   { key: 'hr', label: 'HR', kind: 'int' },
-  { key: 'rbi', label: 'RBI', kind: 'int' },
-  { key: 'bb', label: 'BB', kind: 'int' },
-  { key: 'k', label: 'K', kind: 'int' },
   { key: 'tb', label: 'TB', kind: 'int', title: 'Total bases' },
   { key: 'avg', label: 'AVG', kind: 'rate', title: 'hits / ab' },
   { key: 'obp', label: 'OBP', kind: 'rate', title: 'House rule: (hits + fc) / ab' },
   { key: 'slg', label: 'SLG', kind: 'rate', title: 'tb / ab' },
-  { key: 'ops', label: 'OPS', kind: 'rate', title: 'House rule: AVG + SLG' },
   { key: 'iso', label: 'ISO', kind: 'rate', title: 'slg - avg' },
   { key: 'xbh_pct', label: 'XBH%', kind: 'pct', title: '(2B + 3B + HR) / hits' },
 ]
 
-// All-time leaderboard: Seasons replaces GM, no per-game-missed concept.
+// All-time leaderboard.
 export const CAREER_COLS: Col<CareerStatRow>[] = [
   { key: 'name', label: 'Player', kind: 'text' },
   { key: 'seasons_played', label: 'Sea', kind: 'int', title: 'Seasons played' },
-  { key: 'gp', label: 'GP', kind: 'int', title: 'Games played (tracked seasons only)' },
-  { key: 'pa', label: 'PA', kind: 'int', title: 'Plate appearances (house rule)' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
   { key: 'runs', label: 'R', kind: 'int', title: 'Runs' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
@@ -39,23 +31,17 @@ export const CAREER_COLS: Col<CareerStatRow>[] = [
   { key: 'doubles', label: '2B', kind: 'int' },
   { key: 'triples', label: '3B', kind: 'int' },
   { key: 'hr', label: 'HR', kind: 'int' },
-  { key: 'rbi', label: 'RBI', kind: 'int' },
-  { key: 'bb', label: 'BB', kind: 'int' },
-  { key: 'k', label: 'K', kind: 'int' },
   { key: 'tb', label: 'TB', kind: 'int', title: 'Total bases' },
   { key: 'avg', label: 'AVG', kind: 'rate', title: 'hits / ab' },
   { key: 'obp', label: 'OBP', kind: 'rate', title: 'House rule: (hits + fc) / ab' },
   { key: 'slg', label: 'SLG', kind: 'rate', title: 'tb / ab' },
-  { key: 'ops', label: 'OPS', kind: 'rate', title: 'House rule: AVG + SLG' },
   { key: 'iso', label: 'ISO', kind: 'rate', title: 'slg - avg' },
   { key: 'xbh_pct', label: 'XBH%', kind: 'pct', title: '(2B + 3B + HR) / hits' },
 ]
 
-// Player career page: season-by-season. First column is the season label.
+// Player career page: season-by-season (first column is the season label).
 export const PLAYER_SEASON_COLS: Col<PlayerSeasonRow>[] = [
   { key: 'season_label', label: 'Season', kind: 'text' },
-  { key: 'gp', label: 'GP', kind: 'int', title: 'Games played' },
-  { key: 'pa', label: 'PA', kind: 'int', title: 'Plate appearances (house rule)' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
   { key: 'runs', label: 'R', kind: 'int', title: 'Runs' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
@@ -63,14 +49,10 @@ export const PLAYER_SEASON_COLS: Col<PlayerSeasonRow>[] = [
   { key: 'doubles', label: '2B', kind: 'int' },
   { key: 'triples', label: '3B', kind: 'int' },
   { key: 'hr', label: 'HR', kind: 'int' },
-  { key: 'rbi', label: 'RBI', kind: 'int' },
-  { key: 'bb', label: 'BB', kind: 'int' },
-  { key: 'k', label: 'K', kind: 'int' },
   { key: 'tb', label: 'TB', kind: 'int', title: 'Total bases' },
   { key: 'avg', label: 'AVG', kind: 'rate', title: 'hits / ab' },
   { key: 'obp', label: 'OBP', kind: 'rate', title: 'House rule: (hits + fc) / ab' },
   { key: 'slg', label: 'SLG', kind: 'rate', title: 'tb / ab' },
-  { key: 'ops', label: 'OPS', kind: 'rate', title: 'House rule: AVG + SLG' },
   { key: 'iso', label: 'ISO', kind: 'rate', title: 'slg - avg' },
   { key: 'xbh_pct', label: 'XBH%', kind: 'pct', title: '(2B + 3B + HR) / hits' },
 ]

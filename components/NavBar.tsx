@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { getCurrentUser } from '@/lib/auth'
 import { signOut } from '@/app/auth/actions'
 
@@ -13,7 +14,14 @@ export async function NavBar() {
           href="/stats"
           className="flex items-center gap-2 font-display text-lg font-semibold uppercase tracking-wide text-field-ink"
         >
-          <span aria-hidden>🥎</span>
+          <Image
+            src="/favicon-96x96.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7"
+            priority
+          />
           <span>
             The <span className="text-field-grass">Softball</span> Team
           </span>

@@ -10,7 +10,7 @@ export function StatsGrid({ rows }: { rows: SeasonStatRow[] }) {
     <StatTable
       rows={rows}
       cols={SEASON_COLS}
-      defaultSortKey="ops"
+      defaultSortKey="avg"
       split
       linkBase="/players"
       highlightLeaders

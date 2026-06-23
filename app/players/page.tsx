@@ -21,7 +21,7 @@ export default async function AllTimePage() {
       <StatTable
         rows={rows}
         cols={CAREER_COLS}
-        defaultSortKey="ops"
+        defaultSortKey="avg"
         split
         linkBase="/players"
         highlightLeaders
