@@ -37,10 +37,10 @@ export function PrintableCard({
       </h1>
 
       {/* Runs / outs / score by inning */}
-      <table className="mb-4 w-full border-collapse text-center text-sm">
+      <table className="mb-4 w-full table-fixed border-collapse text-center text-sm">
         <thead>
           <tr>
-            <th className="w-40 border border-field-ink px-2 py-1 text-left" />
+            <th className="w-32 border border-field-ink px-2 py-1 text-left" />
             {INNINGS.map((i) => (
               <th key={i} className="border border-field-ink px-1 py-1">
                 {i}

@@ -34,25 +34,21 @@ body {
     background: #fff;
   }
 
-  /* Hide everything except the element explicitly marked print-card */
-  body :not(.print-card):not(.print-card *) {
-    visibility: hidden;
-  }
-
-  .print-card,
-  .print-card * {
-    visibility: visible;
-  }
-
-  .print-card {
-    position: absolute;
-    inset: 0;
-    margin: 0;
-    width: 100%;
+  /* Hide everything that isn't the card, inside the card, or an ancestor of
+     it. Display-based (not visibility) so the card flows normally from the top
+     and stays WITHIN the @page margins — absolute positioning could escape the
+     margin box and let a printer clip the right edge. */
+  body :not(.print-card):not(.print-card *):not(:has(.print-card)) {
+    display: none !important;
   }
 
   .no-print {
     display: none !important;
+  }
+
+  .print-card {
+    width: 100%;
+    margin: 0;
   }
 
   @page {
