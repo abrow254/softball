@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { listPlayers } from '@/lib/db'
-import { LineupBuilder } from '@/components/LineupBuilder'
+import { getSchedule } from '@/lib/schedule'
+import { getStandings } from '@/lib/standings'
+import { LineupBuilder, type UpcomingGame } from '@/components/LineupBuilder'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +14,25 @@ export default async function LineupPage() {
   if (!current) redirect('/login')
   if (current.role !== 'admin') redirect('/stats')
 
-  const players = await listPlayers({ activeOnly: true })
+  const today = new Date().toISOString().slice(0, 10)
+  const [players, schedule, standings] = await Promise.all([
+    listPlayers({ activeOnly: true }),
+    getSchedule(),
+    getStandings(),
+  ])
+
+  // Map each league team to its W-L-D so we can show the opponent's record.
+  const recordByTeam = new Map<string, string>()
+  if (standings) {
+    for (const pool of standings.pools) {
+      for (const r of pool.rows) recordByTeam.set(r.team, `${r.w}-${r.l}-${r.d}`)
+    }
+  }
+
+  // Upcoming = not yet played and not in the past.
+  const upcoming: UpcomingGame[] = (schedule ?? [])
+    .filter((g) => !g.played && g.date >= today)
+    .map((g) => ({ date: g.date, opponent: g.opponent, record: recordByTeam.get(g.opponent) ?? null }))
 
   return (
     <div className="space-y-5">
@@ -23,7 +43,7 @@ export default async function LineupPage() {
           field. Nothing is saved — this is just for printing.
         </p>
       </div>
-      <LineupBuilder players={players} />
+      <LineupBuilder players={players} upcoming={upcoming} />
     </div>
   )
 }

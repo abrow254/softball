@@ -13,6 +13,11 @@ import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard
 // label change every week, so those aren't restored.
 const STORAGE_KEY = 'lineup-builder-rows-v1'
 
+// "2026-06-28" -> "Jun 28". `T00:00` keeps it in local time (no UTC day-shift).
+function shortDate(iso: string): string {
+  return new Date(`${iso}T00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'Rover', SIT]
 // Positions a real fielder occupies — duplicates here are worth flagging.
 // SIT and blank are intentionally allowed to repeat.
@@ -26,12 +31,19 @@ interface BuilderRow {
 
 type CardTarget = 'lineup' | 'scorecard'
 
+export interface UpcomingGame {
+  date: string // ISO "2026-06-28"
+  opponent: string
+  record: string | null // "5-0-0"
+}
+
 export interface LineupBuilderProps {
   players: Player[]
   defaultRows?: BuilderRow[]
+  upcoming?: UpcomingGame[]
 }
 
-export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: LineupBuilderProps) {
+export function LineupBuilder({ players: initialPlayers, defaultRows = [], upcoming = [] }: LineupBuilderProps) {
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
   const [rows, setRows] = useState<BuilderRow[]>(defaultRows)
   const [gameDate, setGameDate] = useState('')
@@ -203,10 +215,39 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
     [opponent.trim() ? `v. ${opponent.trim()}` : '', dateLabel].filter(Boolean).join(' · ') ||
     'The Softball Team'
 
+  // Reflect the current date+opponent back to the schedule dropdown, and show
+  // the picked opponent's record.
+  const selectedGameKey = `${gameDate}|${opponent}`
+  const selectedRecord = upcoming.find((u) => `${u.date}|${u.opponent}` === selectedGameKey)?.record ?? null
+
   return (
     <div className="space-y-6 pb-28">
       {/* ---- Game header (no-print) ---- */}
       <section className="no-print rounded-lg border border-field-line bg-field-paper p-4">
+        {upcoming.length > 0 && (
+          <label className="mb-3 block text-sm">
+            <span className="mb-1 block text-field-muted">Scheduled game</span>
+            <select
+              value={selectedGameKey}
+              onChange={(e) => {
+                const g = upcoming.find((u) => `${u.date}|${u.opponent}` === e.target.value)
+                if (g) {
+                  setGameDate(g.date)
+                  setOpponent(g.opponent)
+                }
+              }}
+              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-2"
+            >
+              <option value="">Pick from the schedule…</option>
+              {upcoming.map((u) => (
+                <option key={`${u.date}|${u.opponent}`} value={`${u.date}|${u.opponent}`}>
+                  {shortDate(u.date)} · {u.opponent}
+                  {u.record ? ` (${u.record})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-sm">
             <span className="mb-1 block text-field-muted">Date</span>
@@ -230,6 +271,7 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
         </div>
         <p className="mt-2 text-xs text-field-muted">
           Prints as <span className="font-semibold text-field-ink">{title}</span>
+          {selectedRecord && <span> · opponent record {selectedRecord}</span>}
         </p>
       </section>
 
