@@ -1,0 +1,24 @@
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Dependencies
+node_modules/
+
+# Env files
+.env
+.env.local
+.env*.local
+
+# Misc
+.DS_Store
+*.pem
+tsconfig.tsbuildinfo
+.vercel
+
+# Claude Code session data / agent worktrees
+.claude/
+
+# Test/build artifacts
+coverage/

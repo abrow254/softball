@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background-color: theme('colors.field.cream');
+  color: theme('colors.field.ink');
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numeric columns line up cleanly in the stats grid */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* ---- Print: only the printable card shows, fit one page ---- */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  /* Hide everything except the element explicitly marked print-card */
+  body :not(.print-card):not(.print-card *) {
+    visibility: hidden;
+  }
+
+  .print-card,
+  .print-card * {
+    visibility: visible;
+  }
+
+  .print-card {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: portrait;
+    margin: 12mm;
+  }
+}
