@@ -56,7 +56,7 @@ body {
   }
 
   @page {
-    size: portrait;
+    size: letter portrait;
     margin: 12mm;
   }
 }

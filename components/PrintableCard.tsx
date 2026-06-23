@@ -75,7 +75,7 @@ export function PrintableCard({
       </table>
 
       {/* Hitter × innings grid (cells left blank to score by hand) */}
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full table-fixed border-collapse text-sm">
         <thead>
           <tr>
             <th className="border border-field-ink px-2 py-1 text-left">Hitter</th>
