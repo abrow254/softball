@@ -37,7 +37,9 @@ export default async function StatsPage({
       <StatsGrid rows={rows} />
 
       <p className="text-xs text-field-muted">
-        Tap a column header to sort. Two columns use house rules: OBP counts FC and divides by AB; OPS is AVG + SLG.
+        Tap a column header to sort, or a name for that player&rsquo;s career.{' '}
+        <span className="rounded bg-field-gold/30 px-1 font-semibold">Gold</span> marks the season leader in a category
+        (rate stats require 10+ AB). House rules: OBP counts FC and divides by AB; OPS is AVG + SLG.
       </p>
     </div>
   )

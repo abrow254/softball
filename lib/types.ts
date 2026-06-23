@@ -106,6 +106,43 @@ export interface SeasonStatRow {
   xbh_pct: number
 }
 
+// One row of the career_stats view: all-time totals across every season.
+export interface CareerStatRow {
+  player_id: string
+  name: string
+  is_regular: boolean
+  gp: number
+  seasons_played: number
+  singles: number
+  doubles: number
+  triples: number
+  hr: number
+  ab: number
+  fc: number
+  bb: number
+  hbp: number
+  roe: number
+  rbi: number
+  runs: number
+  k: number
+  hits: number
+  tb: number
+  pa: number
+  avg: number
+  obp: number
+  slg: number
+  ops: number
+  iso: number
+  xbh_pct: number
+}
+
+// A season_stats row enriched with its season's label, for career timelines.
+export interface PlayerSeasonRow extends SeasonStatRow {
+  season_label: string
+  year: number
+  term: Term
+}
+
 // Derived game result for display only (never stored).
 export type GameResult = 'W' | 'L' | 'D' | null
 

@@ -23,6 +23,9 @@ export async function NavBar() {
           <Link href="/stats" className="text-field-muted hover:text-field-ink">
             Stats
           </Link>
+          <Link href="/players" className="text-field-muted hover:text-field-ink">
+            All-Time
+          </Link>
           {isAdmin && (
             <Link href="/games" className="text-field-muted hover:text-field-ink">
               Games

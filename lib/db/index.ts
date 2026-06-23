@@ -4,6 +4,7 @@
 
 export * from './seasons'
 export * from './stats'
+export * from './career'
 export * from './players'
 export * from './games'
 export * from './lineups'
