@@ -9,13 +9,16 @@ export interface PrintableCardRow {
 const INNINGS = [1, 2, 3, 4, 5, 6, 7]
 const MIN_ROWS = 14 // fill out to a full lineup so the blank card is reusable
 
+// The handwritten scorecard taken to the field. Mirrors the team's original:
+// a top block to track runs / outs / score by inning, the hitter × innings
+// grid, and the code legend. Cells are blank to fill in by hand.
 export function PrintableCard({
+  title,
   opponent,
-  gameDate,
   rows,
 }: {
+  title: string
   opponent: string | null
-  gameDate: string | null
   rows: PrintableCardRow[]
 }) {
   // Pad with blank rows so the printed card has room for write-ins / subs.
@@ -29,63 +32,100 @@ export function PrintableCard({
   return (
     <div className="print-card text-field-ink">
       {/* Header */}
-      <div className="mb-3 flex items-end justify-between border-b-2 border-field-ink pb-2">
-        <div>
-          <h1 className="text-xl font-bold">The Softball Team — Score Sheet</h1>
-          <p className="text-sm text-field-muted">Forest City SSC · Thursday league</p>
-        </div>
-        <div className="text-right text-sm">
-          <div>
-            <span className="text-field-muted">vs </span>
-            <span className="font-semibold">{opponent || '________________'}</span>
-          </div>
-          <div>
-            <span className="text-field-muted">Date </span>
-            <span className="font-semibold">{gameDate || '____________'}</span>
-          </div>
-          <div className="mt-1">
-            <span className="text-field-muted">Final </span>
-            <span className="font-semibold">Us ____ &nbsp; Them ____</span>
-          </div>
-        </div>
-      </div>
+      <h1 className="mb-3 border-b-2 border-field-ink pb-2 text-center font-display text-2xl font-bold uppercase tracking-wide">
+        {title}
+      </h1>
 
-      {/* Lineup × innings grid (cells left blank to score by hand) */}
+      {/* Runs / outs / score by inning */}
+      <table className="mb-4 w-full border-collapse text-center text-sm">
+        <thead>
+          <tr>
+            <th className="w-40 border border-field-ink px-2 py-1 text-left" />
+            {INNINGS.map((i) => (
+              <th key={i} className="border border-field-ink px-1 py-1">
+                {i}
+              </th>
+            ))}
+            <th className="w-20 border border-field-ink px-1 py-1">FINAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-field-ink px-2 py-1 text-left font-semibold">The Softball Team</td>
+            {INNINGS.map((i) => (
+              <td key={i} className="h-8 border border-field-ink" />
+            ))}
+            <td rowSpan={3} className="border border-field-ink" />
+          </tr>
+          <tr>
+            <td className="border border-field-ink px-2 py-1 text-left font-semibold">OUTS</td>
+            {INNINGS.map((i) => (
+              <td key={i} className="h-8 border border-field-ink" />
+            ))}
+          </tr>
+          <tr>
+            <td className="border border-field-ink px-2 py-1 text-left font-semibold">
+              {opponent || 'Opponent'}
+            </td>
+            {INNINGS.map((i) => (
+              <td key={i} className="h-8 border border-field-ink" />
+            ))}
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Hitter × innings grid (cells left blank to score by hand) */}
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th className="w-8 border border-field-ink px-1 py-1 text-center">#</th>
-            <th className="border border-field-ink px-2 py-1 text-left">Player</th>
-            <th className="w-12 border border-field-ink px-1 py-1 text-center">Pos</th>
+            <th className="border border-field-ink px-2 py-1 text-left">Hitter</th>
             {INNINGS.map((i) => (
               <th key={i} className="w-[10%] border border-field-ink px-1 py-1 text-center">
                 {i}
               </th>
             ))}
+            <th className="w-24 border border-field-ink px-1 py-1 text-center">Starting POS</th>
           </tr>
         </thead>
         <tbody>
           {padded.map((r, idx) => (
             <tr key={idx}>
-              <td className="border border-field-ink px-1 py-2 text-center">{r.batting_order ?? idx + 1}</td>
               <td className="border border-field-ink px-2 py-2 font-medium">{r.name}</td>
-              <td className="border border-field-ink px-1 py-2 text-center">{r.starting_pos}</td>
               {INNINGS.map((i) => (
                 <td key={i} className="h-9 border border-field-ink px-1 py-2" />
               ))}
+              <td className="border border-field-ink px-1 py-2 text-center">{r.starting_pos}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
       {/* Code legend so whoever scores knows the vocabulary */}
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-field-muted">
-        {AT_BAT_CODES.map((code) => (
-          <span key={code}>
-            <span className="font-semibold text-field-ink">{code}</span> {CODE_MEANINGS[code]}
-          </span>
-        ))}
-      </div>
+      <table className="mt-4 w-full border-collapse text-center text-xs">
+        <thead>
+          <tr>
+            <th colSpan={AT_BAT_CODES.length} className="border border-field-ink py-1">
+              Legend
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {AT_BAT_CODES.map((code) => (
+              <td key={code} className="border border-field-ink px-1 py-0.5 font-semibold">
+                {code}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            {AT_BAT_CODES.map((code) => (
+              <td key={code} className="border border-field-ink px-1 py-0.5 text-field-muted">
+                {CODE_MEANINGS[code]}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

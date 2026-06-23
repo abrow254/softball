@@ -30,8 +30,8 @@ export interface LineupBuilderProps {
 export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: LineupBuilderProps) {
   const [players, setPlayers] = useState<Player[]>(initialPlayers)
   const [rows, setRows] = useState<BuilderRow[]>(defaultRows)
+  const [gameLabel, setGameLabel] = useState('')
   const [opponent, setOpponent] = useState('')
-  const [gameDate, setGameDate] = useState('')
 
   const [addPlayerId, setAddPlayerId] = useState('')
   const [newName, setNewName] = useState('')
@@ -137,31 +137,40 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
 
   const empty = rows.length === 0
 
+  // "Game 4 v. The Garbage Cans" — falls back gracefully as fields fill in.
+  const title =
+    [gameLabel.trim(), opponent.trim() ? `v. ${opponent.trim()}` : ''].filter(Boolean).join(' ') ||
+    'The Softball Team'
+
   return (
     <div className="space-y-6 pb-28">
       {/* ---- Game header (no-print) ---- */}
       <section className="no-print rounded-lg border border-field-line bg-field-paper p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-sm">
+            <span className="mb-1 block text-field-muted">Game</span>
+            <input
+              type="text"
+              value={gameLabel}
+              onChange={(e) => setGameLabel(e.target.value)}
+              placeholder="Game 4"
+              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3"
+            />
+          </label>
+          <label className="text-sm">
             <span className="mb-1 block text-field-muted">Opponent</span>
             <input
               type="text"
               value={opponent}
               onChange={(e) => setOpponent(e.target.value)}
-              placeholder="Sharks"
-              className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-field-muted">Date</span>
-            <input
-              type="date"
-              value={gameDate}
-              onChange={(e) => setGameDate(e.target.value)}
+              placeholder="The Garbage Cans"
               className="h-11 w-full rounded-md border border-field-line-strong bg-white px-3"
             />
           </label>
         </div>
+        <p className="mt-2 text-xs text-field-muted">
+          Prints as <span className="font-semibold text-field-ink">{title}</span>
+        </p>
       </section>
 
       {/* ---- Batting order (no-print) ---- */}
@@ -346,9 +355,9 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
         {previewOpen && !empty && (
           <div className="mt-3 overflow-x-auto rounded-lg border border-field-line bg-field-paper p-4">
             {target === 'lineup' ? (
-              <BattingLineupCard opponent={opponent || null} gameDate={gameDate || null} rows={lineupRows} />
+              <BattingLineupCard title={title} rows={lineupRows} />
             ) : (
-              <PrintableCard opponent={opponent || null} gameDate={gameDate || null} rows={scorecardRows} />
+              <PrintableCard title={title} opponent={opponent || null} rows={scorecardRows} />
             )}
           </div>
         )}
@@ -356,10 +365,10 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [] }: Lin
 
       {/* ---- Printables. Active one is print:block; the other never prints. ---- */}
       <div className={`hidden ${target === 'lineup' ? 'print:block' : 'print:hidden'}`} aria-hidden>
-        <BattingLineupCard opponent={opponent || null} gameDate={gameDate || null} rows={lineupRows} />
+        <BattingLineupCard title={title} rows={lineupRows} />
       </div>
       <div className={`hidden ${target === 'scorecard' ? 'print:block' : 'print:hidden'}`} aria-hidden>
-        <PrintableCard opponent={opponent || null} gameDate={gameDate || null} rows={scorecardRows} />
+        <PrintableCard title={title} opponent={opponent || null} rows={scorecardRows} />
       </div>
 
       {/* ---- Sticky print bar (no-print) ---- */}

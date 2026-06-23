@@ -45,7 +45,11 @@ export default async function GameCardPage({ params }: { params: { id: string } 
       </p>
 
       <div className="rounded-lg border border-field-line bg-field-paper p-5 shadow-sm">
-        <PrintableCard opponent={game.opponent} gameDate={game.game_date} rows={rows} />
+        <PrintableCard
+          title={game.opponent ? `v. ${game.opponent}` : 'The Softball Team'}
+          opponent={game.opponent}
+          rows={rows}
+        />
       </div>
     </div>
   )
