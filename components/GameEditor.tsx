@@ -482,7 +482,7 @@ export function GameEditor({ mode, seasons, players: initialPlayers, initialGame
           </table>
         </div>
         <datalist id="pos-options">
-          {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'LC', 'RC', 'RF', 'Rover', SIT].map((p) => (
+          {['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'Rover', SIT].map((p) => (
             <option key={p} value={p} />
           ))}
         </datalist>

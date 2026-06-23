@@ -9,10 +9,10 @@ import { createPlayerAction } from '@/app/games/actions'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
 
-const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'LC', 'RC', 'RF', 'Rover', SIT]
+const POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'Rover', SIT]
 // Positions a real fielder occupies — duplicates here are worth flagging.
 // SIT and blank are intentionally allowed to repeat.
-const FIELD_POSITIONS = new Set(['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'LC', 'RC', 'RF', 'Rover'])
+const FIELD_POSITIONS = new Set(['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'Rover'])
 
 interface BuilderRow {
   player_id: string

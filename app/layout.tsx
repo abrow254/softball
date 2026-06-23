@@ -5,10 +5,10 @@ import { NavBar } from '@/components/NavBar'
 export const metadata: Metadata = {
   metadataBase: new URL('https://softball.beer'),
   title: 'The Softball Team — Stats',
-  description: 'Season stats, game entry, and printable lineup cards for the Forest City SSC Thursday slo-pitch team.',
+  description: 'Season stats, game entry, and printable lineup cards for our slo-pitch team.',
   openGraph: {
     title: 'The Softball Team — Stats',
-    description: 'Season stats, game entry, and printable lineup cards for our Thursday slo-pitch team.',
+    description: 'Season stats, game entry, and printable lineup cards for our slo-pitch team.',
     url: 'https://softball.beer',
     siteName: 'softball.beer',
     type: 'website',
