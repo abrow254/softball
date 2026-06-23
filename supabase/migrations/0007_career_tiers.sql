@@ -8,6 +8,11 @@
 --   regular : 15% <= AB < 40%       (middle tier — fewer seasons)
 --   ringer  : AB < 15%              (occasional subs)
 -- season_stats is unchanged (a single season stays Regulars/Ringers).
+--
+-- NOTE: dropped first because CREATE OR REPLACE can't reorder/insert columns
+-- (tier is inserted mid-list); nothing depends on this view.
+
+drop view if exists career_stats;
 
 create or replace view career_stats
 with (security_invoker = on)
