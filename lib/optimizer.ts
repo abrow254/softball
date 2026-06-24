@@ -149,8 +149,9 @@ function bruteForce(players: OptimizerInput[], slots: SlotConfig[]): OptimizeRes
     return { order: players.map((p) => p.player_id), score: 0, feasible: false }
   }
 
+  const perm = bestPerm as number[]
   return {
-    order: bestPerm.map((i) => players[i].player_id),
+    order: perm.map((i) => players[i].player_id),
     score: bestScore,
     feasible: true,
   }
@@ -216,7 +217,7 @@ function greedyOptimize(players: OptimizerInput[], slots: SlotConfig[]): Optimiz
   }
 
   return {
-    order: bestOrder.map((i) => players[i].player_id),
+    order: (bestOrder as number[]).map((i) => players[i].player_id),
     score: bestScore,
     feasible: true,
   }

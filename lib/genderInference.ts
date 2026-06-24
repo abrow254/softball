@@ -46,8 +46,8 @@ export function inferGenderHeuristic(name: string): 'M' | 'F' | null {
 export async function inferGenderClaude(name: string): Promise<'M' | 'F' | '?'> {
   if (!name) return '?'
 
-  const anthropic = await import('@anthropic-ai/sdk').then((m) => m.default)
-  const client = new anthropic.default()
+  const Anthropic = await import('@anthropic-ai/sdk').then((m) => m.default)
+  const client = new Anthropic()
 
   try {
     const response = await client.messages.create({
