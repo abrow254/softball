@@ -4,7 +4,6 @@ import type { SeasonStatRow, CareerStatRow, PlayerSeasonRow } from '@/lib/types'
 // Season grid. (GP, PA, K, RBI, BB, OPS, R intentionally omitted per team pref.)
 export const SEASON_COLS: Col<SeasonStatRow>[] = [
   { key: 'name', label: 'Player', kind: 'text' },
-  { key: 'games_missed', label: 'GM', kind: 'int', title: 'Games missed' },
   { key: 'ab', label: 'AB', kind: 'int', title: 'At-bats' },
   { key: 'hits', label: 'H', kind: 'int', title: 'Hits' },
   { key: 'singles', label: '1B', kind: 'int' },

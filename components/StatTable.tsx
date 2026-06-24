@@ -21,7 +21,7 @@ interface BaseRow {
 }
 
 // Columns that should never get a "leader" crown (lower is better, or noise).
-const NO_LEADER = new Set(['name', 'games_missed', 'k', 'gp', 'seasons_played', 'season_label'])
+const NO_LEADER = new Set(['name', 'k', 'gp', 'seasons_played', 'season_label'])
 
 // Rate/pct leaders only count players with enough at-bats; counting stats don't.
 function leaderValues<T extends BaseRow>(
@@ -86,7 +86,8 @@ function Table<T extends BaseRow>({
   dimmed?: (row: T) => boolean
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-field-line">
+    <div className="relative">
+      <div className="overflow-x-auto rounded-lg border border-field-line">
       <table className="tabular min-w-full border-collapse text-sm">
         <thead>
           <tr className="bg-field-cream/70 text-field-muted">
@@ -140,7 +141,7 @@ function Table<T extends BaseRow>({
                     className={[
                       'whitespace-nowrap px-2.5 py-1.5',
                       i === 0
-                        ? 'sticky left-0 z-10 bg-inherit text-left font-medium text-field-ink'
+                        ? 'sticky left-0 z-10 bg-field-paper text-left font-medium text-field-ink'
                         : 'text-right text-field-ink',
                       isLeader ? 'rounded bg-field-gold/30 font-semibold text-field-ink' : '',
                     ].join(' ')}
@@ -153,6 +154,11 @@ function Table<T extends BaseRow>({
           ))}
         </tbody>
       </table>
+      </div>
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-field-paper to-transparent"
+        aria-hidden
+      />
     </div>
   )
 }

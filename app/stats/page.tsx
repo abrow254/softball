@@ -28,7 +28,7 @@ export default async function StatsPage({
   const rows = await getSeasonStats(selectedId)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Season stats</h1>
         <SeasonSelector seasons={seasons} selectedId={selectedId} />

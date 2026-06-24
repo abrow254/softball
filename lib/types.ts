@@ -81,8 +81,6 @@ export interface SeasonStatRow {
   player_id: string
   name: string
   is_regular: boolean
-  gp: number
-  games_missed: number
   singles: number
   doubles: number
   triples: number
