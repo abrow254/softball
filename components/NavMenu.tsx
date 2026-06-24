@@ -18,6 +18,7 @@ const PUBLIC_LINKS: NavLink[] = [
 
 const ADMIN_LINKS: NavLink[] = [
   { href: '/lineup', label: 'Lineup' },
+  { href: '/lineup-lab', label: 'Lab' },
   { href: '/games', label: 'Games' },
 ]
 
