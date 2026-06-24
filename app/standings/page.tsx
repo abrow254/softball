@@ -9,6 +9,7 @@ function PoolTable({ pool }: { pool: StandingsPool }) {
   return (
     <section>
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">{pool.name}</h2>
+      <div className="relative">
       <div className="overflow-x-auto rounded-lg border border-field-line">
         <table className="tabular min-w-full border-collapse text-sm">
           <thead>
@@ -37,7 +38,7 @@ function PoolTable({ pool }: { pool: StandingsPool }) {
                 <td
                   className={[
                     'sticky left-0 z-10 whitespace-nowrap px-2.5 py-1.5 text-left text-field-ink',
-                    r.isUs ? 'bg-field-gold/25' : 'bg-inherit',
+                    r.isUs ? 'bg-[#FFF6BF]' : 'bg-field-paper',
                   ].join(' ')}
                 >
                   {r.team}
@@ -61,6 +62,11 @@ function PoolTable({ pool }: { pool: StandingsPool }) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-field-paper to-transparent"
+        aria-hidden
+      />
       </div>
     </section>
   )
@@ -92,7 +98,7 @@ export default async function StandingsPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Standings</h1>
         <p className="mt-1 text-sm text-field-muted">{standings.season}</p>
