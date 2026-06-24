@@ -1,0 +1,350 @@
+LINEUP LAB OPTIMIZER — IMPLEMENTATION SUMMARY
+==============================================
+
+Project: Softball Team Stats & Lineup Builder
+Branch: claude/lineup-lab-optimizer-g73lho
+Date: 2026-06-24
+
+---
+
+## SECTION 1: SCHEMA DELTAS
+
+File: supabase/migrations/0008_lineup_lab.sql
+
+1. Players table enhancement:
+   - ALTER TABLE players ADD COLUMN IF NOT EXISTS gender text CHECK (gender IN ('M','F'))
+   - New column, nullable (backfill required before Lineup Lab is functional)
+   - Used by MMF (no-three-males-in-a-row) constraint validation
+
+2. Player game log view:
+   - CREATE VIEW player_game_log AS (per-player per-game aggregation)
+   - Source: game_player_stats + games (joined on game_id)
+   - Output columns:
+     * player_id, game_id, game_date, season_id
+     * hits (singles + doubles + triples + hr)
+     * ab (at-bats)
+     * avg = hits / ab (0 if ab=0)
+     * slg = (singles + 2×doubles + 3×triples + 4×hr) / ab
+     * ops = avg + slg (house formula: NOT obp + slg)
+   - Ordered by game_date ascending (within a season)
+   - security_invoker = on (RLS applies to authenticated viewers)
+
+---
+
+## SECTION 2: DATA LAYER
+
+File: lib/db/lineupLab.ts
+
+Function: getLineupLabData(seasonId: string) → Promise<LineupLabPlayer[]>
+
+Flow:
+1. Query season_stats for rate stats (avg, obp, slg, ops) + is_regular flag
+2. Query player_game_log for all (player, game_date, ops) in season
+3. Query players table for gender (M | F | null) for each player in season_stats
+4. For each player:
+   - Extract last 6 game OPS values (oldest-first, for sparkline)
+   - Compute mean of last 3 games as recentForm (hot/cold indicator)
+5. Return LineupLabPlayer[] (typed interface with all fields)
+
+Form window: last 6 games; recent-form metric: mean of last 3 games.
+
+---
+
+## SECTION 3: OPTIMIZER ALGORITHM
+
+File: lib/optimizer.ts
+
+### Data Model
+
+SlotConfig = { role: string, w: number (importance), a: number (OBP%), b: number (SLG%) }
+
+Slot weights (slots 1–8, spec-exact):
+  1. Leadoff:  w=1.00, a=.65, b=.35
+  2. 2-hole:   w=1.05, a=.58, b=.42  ← highest weight
+  3. 3-hole:   w=.80,  a=.50, b=.50
+  4. Cleanup:  w=1.00, a=.40, b=.60  ← second-highest weight
+  5. 5-hole:   w=.90,  a=.45, b=.55
+  6. 6-hole:   w=.74,  a=.55, b=.45
+  7. 7-hole:   w=.66,  a=.50, b=.50
+  8. 8-hole:   w=.60,  a=.50, b=.50
+
+Extended slots (9+): descending weights (0.55, 0.50, 0.46, 0.42, ...) with a=b=0.50
+
+### Slot value formula
+
+value(player, slot) = w × (a × obp + b × slg)
+lineupScore = Σ value(order[i], slot[i]) for i in 0..n-1
+
+### MMF constraint (cyclic)
+
+No 3 consecutive males in the batting order, with the wrap from last batter to first counting.
+
+isCyclicViolation(i) iff:
+  order[i].gender == 'M' AND
+  order[(i+1) % n].gender == 'M' AND
+  order[(i+2) % n].gender == 'M'
+
+Feasibility guard: a legal order exists iff males ≤ 2 × nonMales (F + null)
+
+### Algorithm selector
+
+if n <= 8:
+  return bruteForce(players, slots)
+else:
+  return greedyOptimize(players, slots)
+
+### Brute force (n ≤ 8)
+
+- Generate all n! permutations via Heap algorithm (recursive swap)
+- For each permutation, check MMFViolations()
+- Keep the permutation with the highest lineupScore among legal ones
+- Max iterations: 8! = 40,320
+
+### Greedy pattern-based (n > 8)
+
+1. Enumerate all valid cyclic gender patterns:
+   - Pattern = array of length n, each element 0 (non-male) or 1 (male)
+   - Exactly `males` 1s and `nonMales` 0s
+   - No 3 consecutive 1s (linear pruning during generation)
+   - Final check: cyclic wrap is also valid (no wrap-around 3-in-a-row)
+
+2. For each valid pattern:
+   - Identify male slots (pattern[i] == 1) and non-male slots (pattern[i] == 0)
+   - Sort slots by w descending (most valuable first) within each group
+   - Sort players by OPS descending within each gender
+   - Assign greedily: i-th best player of gender G → i-th most-valuable slot for G
+   - Compute lineupScore for this assignment
+
+3. Return assignment with highest lineupScore across all patterns
+
+---
+
+## SECTION 4: UI COMPONENTS
+
+File: components/LineupLab.tsx
+
+Mobile-first design, Cardinals red + mustard accent, Oswald headings.
+
+### Lineup card (hero section)
+
+For each batting-order slot (1–n):
+  - Slot number (1-indexed, red text)
+  - Role label ("Leadoff", "2-hole", ..., or "N-hole" for n > 8)
+  - Player name (truncated on mobile)
+  - Gender marker (M/F/? badge, colors: blue for M, pink for F, gray for null)
+  - Form badge (Hot ▲ / Cold ▼ / Steady ~, colors: orange / sky / gray)
+  - Action buttons: ▲ ▼ (nudge up/down) + ✕ (send to bench)
+  - Stats row (AVG OBP SLG OPS in tabular-nums mono font)
+  - Sparkline (6-point line chart, green/red/gray based on trend)
+  - Left rail: RED on MMF-violated slots, transparent otherwise
+
+### Status chips (top)
+
+- Legality: ✓ Legal | ✕ Illegal MMF | ✕ No legal order
+- Lineup score (tabular mono)
+- Action buttons: Auto-optimize (disabled if infeasible) + Reset
+
+### Infeasibility warning
+
+If males > 2 × females: banner explaining the constraint and suggesting remedies.
+
+### Selection banner
+
+During bench selection: "Tap a slot to swap [NAME] in, or tap the player again to cancel."
+
+### Bench section
+
+For each bench player (if any):
+  - Same format as lineup cards but more compact
+  - Tap to select (gold ring highlight + "selected" state)
+  - "+ Add" button to add directly to order
+  - During selection: note "Tap a slot in the order to swap [NAME] in"
+
+### The Read (insight panel)
+
+Plain-language sentences generated from order + violations + form:
+  - Always: "N leads off at X OBP. M hits second (Y OPS). C cleans up, Z SLG."
+  - If heating up (last-3 > season OPS + 0.04): "[Player] is heating up — last-3 OPS X vs Y season."
+  - If cooling off (season OPS - last-3 > 0.04): "[Player] cooled off — consider dropping a spot."
+  - If infeasible: "No legal order — add a woman or take an auto-out."
+  - If violation: "Illegal: slots [N, N+1, N+2] run three men in a row. Move a woman between them."
+
+### Slot-value explainer bar chart
+
+Horizontal bar chart showing slots 1–8 with relative widths proportional to w.
+Slots 2 and 4 highlighted (gold).
+Caption: "Slots 2 and 4 carry the most weight — put your best bats there."
+
+### Interaction model (mobile-first, no drag-drop)
+
+- Tap a bench player to select (toggle; gold ring + status banner)
+- While a bench player is selected, tap a lineup slot to swap them in
+- Tap ▲/▼ on a lineup slot to nudge the player up/down
+- Tap ✕ on a lineup slot to send the player to bench
+- Auto-optimize button: runs optimize(), animates result, shows 🦜 cockatiel flash
+- Reset button: returns to initial state (top 8 by OPS in order, rest on bench)
+
+### Auto-optimize animation
+
+On success:
+  - Order state updates
+  - Flash message: "🦜 Order optimized — [score] lineup score."
+  - Lasts 1.8 seconds, then fades
+
+---
+
+## SECTION 5: PAGE & ROUTING
+
+File: app/lineup-lab/page.tsx
+
+Route: /lineup-lab (admin-only)
+
+Server action:
+  1. Check authentication (redirect to /login if none)
+  2. Check admin role (redirect to /stats if viewer)
+  3. Fetch listSeasons() and getCurrentSeason()
+  4. Parse ?season= query param; default to current season or first
+  5. Call getLineupLabData(selectedSeasonId)
+  6. Render <LineupLab> with key={selectedSeasonId} (remount on season change)
+
+Nav link added to NavMenu.tsx: /lineup-lab labeled "Lab" in admin links section.
+
+---
+
+## SECTION 6: TEST COVERAGE
+
+File: __tests__/optimizer.test.ts
+
+13 new tests, all passing:
+
+QA Case 1: 5M / 3F, 8 deep
+  ✓ Returns feasible result
+  ✓ No MMF violations
+  ✓ Top-2 OPS players in slots 2 and 4
+
+QA Case 2: 6M / 2F, 8 deep (infeasible)
+  ✓ isFeasible(6, 2) → false
+  ✓ optimize() returns feasible:false, score:0
+
+QA Case 3: Cyclic wrap violation (slots 8, 1, 2)
+  ✓ checkMMFViolations flags all three indices
+  ✓ Flagged set is non-empty
+
+QA Case 4: Score monotonicity
+  ✓ Slot 2 value > slot 6 value for same player
+
+Edge cases:
+  ✓ Empty roster → feasible, empty order
+  ✓ Boundary 3M 3F → feasible
+  ✓ Boundary 3M 1F → infeasible
+  ✓ All-female lineup → legal, no MMF violations
+  ✓ n > 8 greedy path (5M 5F) → legal order
+
+Total test suite: 41 tests (13 new + 28 pre-existing), all passing.
+
+---
+
+## SECTION 7: HOT/COLD LOGIC
+
+File: components/LineupLab.tsx, function getFormTag()
+
+Thresholds:
+  - Hot: recentForm > seasonOPS × 1.06
+  - Cold: recentForm < seasonOPS × 0.94
+  - Steady: otherwise
+
+recentForm = mean OPS of last 3 games (0 if fewer than 1 game)
+seasonOPS = season stat line OPS
+
+Display:
+  - Hot: ▲ orange badge
+  - Cold: ▼ sky badge
+  - Steady: ~ gray badge
+
+---
+
+## SECTION 8: HOUSE FORMULAS (UNCHANGED)
+
+Formulas preserved from Google Sheet via formulas.ts:
+
+  hits = singles + doubles + triples + hr
+  tb = singles + 2×doubles + 3×triples + 4×hr
+  pa = runs + hits + bb + hbp + roe  [HOUSE RULE]
+  avg = hits / ab
+  obp = (hits + fc) / ab  [HOUSE RULE: counts FC, divides by AB not PA]
+  slg = tb / ab
+  ops = avg + slg  [HOUSE RULE: NOT obp + slg]
+  iso = slg - avg
+  xbh_pct = (doubles + triples + hr) / hits
+
+All applied identically in SQL view and TypeScript.
+
+---
+
+## SECTION 9: DIVERGENCE NOTES
+
+1. No prototype file existed (lineup-lab-prototype.html was referenced but absent).
+   Implementation built directly from spec as the contract.
+
+2. Greedy (n > 8) vs Hungarian algorithm:
+   Spec permits "greedy best-player-to-best-open-slot within each gender group."
+   Full Hungarian algorithm not required for typical co-ed softball rosters (10–12 players).
+
+3. Sparkline color scheme:
+   Green = upward trend (first vs last OPS in form window)
+   Red = downward trend
+   Gray = flat
+   (More visually useful than strictly vs season OPS.)
+
+4. No written backfill script for gender column.
+   Admin must backfill players.gender before Lineup Lab is functional.
+
+---
+
+## SECTION 10: DEPLOYMENT CHECKLIST
+
+Before the page goes live:
+
+☐ Run supabase/migrations/0008_lineup_lab.sql on production
+☐ Backfill players.gender for all active players (required; no default)
+☐ Test /lineup-lab with a season containing multiple games
+☐ Verify MMF violations on intentional 3-male-in-a-row orders
+☐ Confirm "No legal order" message for 6M/2F rosters
+☐ Test auto-optimize with n > 8 (greedy path)
+☐ Verify hot/cold badges align with last-3 OPS
+☐ Confirm sparkline renders correctly (6 recent games)
+☐ Test reset button returns to initial state
+☐ Verify bench → swap interaction works on mobile
+
+---
+
+## FILES MODIFIED/CREATED
+
+Created:
+  - supabase/migrations/0008_lineup_lab.sql (SQL schema)
+  - lib/db/lineupLab.ts (data access)
+  - lib/optimizer.ts (algorithm)
+  - components/LineupLab.tsx (UI)
+  - app/lineup-lab/page.tsx (page route)
+  - __tests__/optimizer.test.ts (tests)
+
+Modified:
+  - lib/types.ts (added Gender, LineupLabPlayer, PlayerGameLog types)
+  - lib/db/index.ts (export getLineupLabData)
+  - components/NavMenu.tsx (added /lineup-lab link to ADMIN_LINKS)
+  - package.json (added vitest dev dependency)
+  - package-lock.json (lockfile update)
+
+---
+
+## SUMMARY
+
+The Lineup Lab optimizer enables in-season batting-order building with:
+  • MMF (no-3-males-in-a-row) constraint enforcement
+  • Slot-weighted optimization (slots 2 and 4 prioritized)
+  • Form-based hot/cold badges (6-game sparkline, 3-game recency window)
+  • Mobile-first, tap-to-swap UX (no drag-drop)
+  • Live legality + score feedback
+  • Brute-force (n≤8) and greedy pattern-based (n>8) algorithms
+
+All QA cases pass. All 41 tests pass (13 new). Ready for deployment after gender backfill.

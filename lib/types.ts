@@ -149,6 +149,36 @@ export interface PlayerSeasonRow extends SeasonStatRow {
 // Derived game result for display only (never stored).
 export type GameResult = 'W' | 'L' | 'D' | null
 
+// ---- Lineup Lab --------------------------------------------------------------
+
+export type Gender = 'M' | 'F'
+
+export interface PlayerGameLog {
+  player_id: string
+  game_id: string
+  game_date: string
+  season_id: string
+  hits: number
+  ab: number
+  avg: number
+  slg: number
+  ops: number
+}
+
+// One player's season data enriched with recent form, for Lineup Lab.
+export interface LineupLabPlayer {
+  player_id: string
+  name: string
+  gender: Gender | null
+  is_regular: boolean
+  avg: number
+  obp: number
+  slg: number
+  ops: number
+  form: number[]      // last-6 game OPS values, oldest-first
+  recentForm: number  // mean OPS of last-3 games; 0 if fewer than 1 game
+}
+
 export function gameResult(our: number | null, opp: number | null): GameResult {
   if (our == null || opp == null) return null
   if (our > opp) return 'W'
