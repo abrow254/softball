@@ -31,6 +31,9 @@ export interface Game {
   opponent: string | null
   our_runs: number | null
   opp_runs: number | null
+  is_aggregate: boolean
+  potg_player_id: string | null
+  potg_score: number | null
   created_at: string
 }
 
@@ -161,6 +164,50 @@ export interface PlayerGameLog {
   avg: number
   slg: number
   ops: number
+}
+
+// Extended per-game line used by player profiles and box scores.
+export interface PlayerGameLogEntry extends PlayerGameLog {
+  singles: number
+  doubles: number
+  triples: number
+  hr: number
+  tb: number
+  fc: number
+  bb: number
+  hbp: number
+  roe: number
+  rbi: number
+  runs: number
+  k: number
+  opponent: string | null
+  is_potg: boolean
+}
+
+// One player's box-score line: counting stats + derived rate stats, for /games/[id].
+export interface BoxScoreRow {
+  player_id: string
+  name: string
+  is_regular: boolean
+  batting_order: number | null
+  singles: number
+  doubles: number
+  triples: number
+  hr: number
+  ab: number
+  fc: number
+  bb: number
+  hbp: number
+  roe: number
+  rbi: number
+  runs: number
+  k: number
+  hits: number
+  tb: number
+  avg: number
+  slg: number
+  ops: number
+  is_potg: boolean
 }
 
 // One player's season data enriched with recent form, for Lineup Lab.

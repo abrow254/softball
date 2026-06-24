@@ -1,11 +1,23 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listSeasons, getCurrentSeason, listGames } from '@/lib/db'
+import { listSeasons, getCurrentSeason, listGames, getSeasonStats } from '@/lib/db'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import { gameResult } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
+
+// Cockatiel badge used for PotG
+function PotGBadge({ name }: { name: string }) {
+  return (
+    <span
+      title={`Player of the Game: ${name}`}
+      className="inline-flex items-center gap-1 rounded-full bg-field-gold/20 px-2 py-0.5 text-xs font-medium text-field-ink"
+    >
+      🐦 {name}
+    </span>
+  )
+}
 
 export default async function GamesPage({ searchParams }: { searchParams: { season?: string } }) {
   const current = await getCurrentUser()
@@ -17,7 +29,12 @@ export default async function GamesPage({ searchParams }: { searchParams: { seas
   const selectedId =
     searchParams.season && seasons.some((s) => s.id === searchParams.season) ? searchParams.season : fallback
 
-  const games = selectedId ? await listGames(selectedId) : []
+  const [games, players] = selectedId
+    ? await Promise.all([listGames(selectedId), getSeasonStats(selectedId)])
+    : [[], []]
+
+  // Build a name lookup for PotG winners
+  const playerNames = new Map(players.map((p) => [p.player_id, p.name]))
 
   return (
     <div className="space-y-6">
@@ -49,12 +66,14 @@ export default async function GamesPage({ searchParams }: { searchParams: { seas
                 <th className="px-3 py-2 text-left font-medium">Opponent</th>
                 <th className="px-3 py-2 text-right font-medium">Score</th>
                 <th className="px-3 py-2 text-center font-medium">Result</th>
+                <th className="px-3 py-2 text-left font-medium">PotG</th>
                 <th className="px-3 py-2 text-right font-medium" />
               </tr>
             </thead>
             <tbody>
               {games.map((g) => {
                 const r = gameResult(g.our_runs, g.opp_runs)
+                const potgName = g.potg_player_id ? playerNames.get(g.potg_player_id) : undefined
                 return (
                   <tr key={g.id} className="border-t border-field-line even:bg-field-cream/30">
                     <td className="whitespace-nowrap px-3 py-2 text-field-ink">{g.game_date ?? '—'}</td>
@@ -77,7 +96,18 @@ export default async function GamesPage({ searchParams }: { searchParams: { seas
                         </span>
                       )}
                     </td>
+                    <td className="px-3 py-2">
+                      {potgName && !g.is_aggregate && <PotGBadge name={potgName} />}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
+                      {!g.is_aggregate && (
+                        <>
+                          <Link href={`/games/${g.id}`} className="text-field-grass hover:underline">
+                            Box
+                          </Link>
+                          <span className="px-1 text-field-line-strong">·</span>
+                        </>
+                      )}
                       <Link href={`/games/${g.id}/edit`} className="text-field-grass hover:underline">
                         Edit
                       </Link>

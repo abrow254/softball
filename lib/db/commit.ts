@@ -1,4 +1,4 @@
-import { upsertGame, type GameInput } from './games'
+import { upsertGame, updatePotG, type GameInput } from './games'
 import { replaceLineup, type LineupRow } from './lineups'
 import { replaceGameStats, type StatRowInput } from './gameStats'
 import { replaceAtBats, type AtBatRow } from './atbats'
@@ -32,5 +32,8 @@ export async function commitGame(payload: CommitGamePayload): Promise<CommitGame
   if (payload.atBats !== undefined) {
     await replaceAtBats(game.id, payload.atBats)
   }
+  // Compute and persist PotG whenever stats are written (new or re-save).
+  // Non-fatal: if this fails the game is still saved; PotG stays null.
+  await updatePotG(game.id).catch(() => null)
   return { gameId: game.id }
 }
