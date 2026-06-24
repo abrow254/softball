@@ -35,7 +35,6 @@ export async function saveGame(input: SaveGameInput): Promise<{ gameId: string }
   revalidatePath(`/games/${result.gameId}`)
   revalidatePath(`/games/${result.gameId}/edit`)
   revalidatePath(`/games/${result.gameId}/card`)
-  revalidatePath('/leaderboards')
   revalidatePath('/awards')
   return result
 }

@@ -11,7 +11,6 @@ interface NavLink {
 
 const PUBLIC_LINKS: NavLink[] = [
   { href: '/stats', label: 'Stats' },
-  { href: '/leaderboards', label: 'Leaders' },
   { href: '/awards', label: 'Awards' },
   { href: '/players', label: 'All-Time' },
   { href: '/standings', label: 'Standings' },
