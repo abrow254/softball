@@ -59,7 +59,7 @@ const recordScorecardTool: Anthropic.Tool = {
 
 const SYSTEM_PROMPT = `You read a single handwritten slo-pitch softball scorecard photo and transcribe it.
 
-Card layout: one row per player. Across the top are innings 1 through 7. Each cell holds exactly ONE code, or is blank.
+Card layout: one row per player. Across the top are innings 1 through 7. A cell may hold ONE or MORE codes (e.g., "H1 H2" if the player batted twice), or be blank.
 
 The ONLY valid codes are:
   H1 = single, H2 = double, H3 = triple, H4 = home run,
@@ -67,9 +67,10 @@ The ONLY valid codes are:
 
 Rules:
 - Read every player row top to bottom. Use the row order as batting_order.
-- For each player, list one at_bat per NON-BLANK inning cell, left to right, with its inning number (1-7). Skip blank cells.
-- Map every cell to the closest valid code. Watch the easily-confused pairs: FO / PO / GO, and H1 / H4.
-- If a cell is genuinely unreadable, make your best single guess from the nine codes — a human reviews everything before it is saved.
+- For each player, extract EVERY code from every NON-BLANK inning cell, left to right.
+  If a cell contains multiple codes (e.g., "H1 H2"), create one at_bat entry PER CODE with the SAME inning number.
+- Map every code to the closest valid code. Watch the easily-confused pairs: FO / PO / GO, and H1 / H4.
+- If a code is genuinely unreadable, make your best single guess from the nine codes — a human reviews everything before it is saved.
 - Capture opponent and final score only if they are clearly written; otherwise null.
 - Do not invent players or at-bats. Call the record_scorecard tool exactly once.`
 

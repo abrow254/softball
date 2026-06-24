@@ -52,9 +52,24 @@ export function emptyStatLine(): StatLine {
   }
 }
 
-// A player "played" (gets a stat line) unless they're explicitly sitting.
+// A player "played" (gets a stat line) if they have any stats at all.
+// "Sit" just means they weren't in the field for inning 1, but they still bat.
 export function playedThisGame(row: EditorRow): boolean {
-  return row.starting_pos.trim().toLowerCase() !== SIT.toLowerCase()
+  const { ab, singles, doubles, triples, hr, fc, bb, hbp, roe, rbi, runs, k } = row.stats
+  return (
+    ab > 0 ||
+    singles > 0 ||
+    doubles > 0 ||
+    triples > 0 ||
+    hr > 0 ||
+    fc > 0 ||
+    bb > 0 ||
+    hbp > 0 ||
+    roe > 0 ||
+    rbi > 0 ||
+    runs > 0 ||
+    k > 0
+  )
 }
 
 function pickStatLine(s: GamePlayerStats): StatLine {
