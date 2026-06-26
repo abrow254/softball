@@ -17,6 +17,25 @@ import { fmt3 } from '@/lib/formulas'
 const HOT_RATIO = 1.06
 const COLD_RATIO = 0.94
 
+// ---- Placeholder helpers -------------------------------------------------------
+
+const PH_PREFIX = '__placeholder__'
+const isPlaceholder = (id: string) => id.startsWith(PH_PREFIX)
+
+function neededPlaceholders(males: number, nonMales: number): number {
+  return Math.max(0, Math.ceil(males / 2) - nonMales)
+}
+
+function makePlaceholderInputs(count: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    player_id: `${PH_PREFIX}${i}`,
+    gender: 'F' as const,
+    obp: 0,
+    slg: 0,
+    ops: 0,
+  }))
+}
+
 // ---- Small sub-components ----------------------------------------------------
 
 function Sparkline({ values }: { values: number[] }) {
@@ -238,19 +257,23 @@ function initialState(players: LineupLabPlayer[]) {
   const initialOrderPlayers = sorted.slice(0, topN)
   const initialBenchIds = sorted.slice(topN).map((p) => p.player_id)
 
-  const result = optimize(
-    initialOrderPlayers.map((p) => ({
+  const males = initialOrderPlayers.filter((p) => p.gender === 'M').length
+  const nonMales = initialOrderPlayers.length - males
+  const ph = makePlaceholderInputs(neededPlaceholders(males, nonMales))
+
+  const inputs = [
+    ...initialOrderPlayers.map((p) => ({
       player_id: p.player_id,
       gender: p.gender,
       obp: p.obp,
       slg: p.slg,
       ops: p.ops,
     })),
-  )
+    ...ph,
+  ]
 
-  const orderIds = result.feasible
-    ? result.order
-    : initialOrderPlayers.map((p) => p.player_id)
+  const result = optimize(inputs)
+  const orderIds = result.feasible ? result.order : inputs.map((p) => p.player_id)
 
   return { order: orderIds, bench: initialBenchIds }
 }
@@ -267,39 +290,55 @@ export function LineupLab({ players, seasons, selectedSeasonId }: LineupLabProps
 
   const slots = useMemo(() => getSlotConfigs(order.length), [order.length])
 
+  const violations = useMemo(
+    () =>
+      checkMMFViolations(
+        order.map((id) => (isPlaceholder(id) ? 'F' : (playerMap.get(id)?.gender ?? null))),
+      ),
+    [order, playerMap],
+  )
+
+  const score = useMemo(
+    () =>
+      calcLineupScore(
+        order.map((id) => ({
+          obp: isPlaceholder(id) ? 0 : (playerMap.get(id)?.obp ?? 0),
+          slg: isPlaceholder(id) ? 0 : (playerMap.get(id)?.slg ?? 0),
+        })),
+        slots,
+      ),
+    [order, playerMap, slots],
+  )
+
+  const males = useMemo(
+    () => order.filter((id) => !isPlaceholder(id) && playerMap.get(id)?.gender === 'M').length,
+    [order, playerMap],
+  )
+  const nonMales = order.length - males
+  const feasible = isFeasible(males, nonMales)
+  const isLegal = feasible && violations.length === 0
+
+  // For TheRead and other panels that only care about real players.
   const orderedPlayers = useMemo(
     () => order.map((id) => playerMap.get(id)).filter(Boolean) as LineupLabPlayer[],
     [order, playerMap],
   )
 
-  const violations = useMemo(
-    () => checkMMFViolations(orderedPlayers.map((p) => p.gender)),
-    [orderedPlayers],
-  )
-
-  const score = useMemo(
-    () => calcLineupScore(orderedPlayers, slots),
-    [orderedPlayers, slots],
-  )
-
-  const males = useMemo(
-    () => orderedPlayers.filter((p) => p.gender === 'M').length,
-    [orderedPlayers],
-  )
-  const nonMales = orderedPlayers.length - males
-  const feasible = isFeasible(males, nonMales)
-  const isLegal = feasible && violations.length === 0
-
   // ---- Interactions -----------------------------------------------------------
 
   function handleOptimize() {
-    const inputs = orderedPlayers.map((p) => ({
-      player_id: p.player_id,
-      gender: p.gender,
-      obp: p.obp,
-      slg: p.slg,
-      ops: p.ops,
-    }))
+    const realIds = order.filter((id) => !isPlaceholder(id))
+    const realMales = realIds.filter((id) => playerMap.get(id)?.gender === 'M').length
+    const realNonMales = realIds.length - realMales
+    const ph = makePlaceholderInputs(neededPlaceholders(realMales, realNonMales))
+
+    const inputs = [
+      ...realIds.map((id) => {
+        const p = playerMap.get(id)!
+        return { player_id: id, gender: p.gender, obp: p.obp, slg: p.slg, ops: p.ops }
+      }),
+      ...ph,
+    ]
     const result = optimize(inputs)
     if (result.feasible) {
       setState((s) => ({ ...s, order: result.order }))
@@ -327,10 +366,14 @@ export function LineupLab({ players, seasons, selectedSeasonId }: LineupLabProps
 
   function handleSendToBench(idx: number) {
     const playerId = order[idx]
-    setState((s) => ({
-      order: s.order.filter((_, i) => i !== idx),
-      bench: [...s.bench, playerId],
-    }))
+    if (isPlaceholder(playerId)) {
+      setState((s) => ({ ...s, order: s.order.filter((_, i) => i !== idx) }))
+    } else {
+      setState((s) => ({
+        order: s.order.filter((_, i) => i !== idx),
+        bench: [...s.bench, playerId],
+      }))
+    }
     setSelectedBenchId(null)
   }
 
@@ -450,12 +493,67 @@ export function LineupLab({ players, seasons, selectedSeasonId }: LineupLabProps
             </h2>
             <ol className="space-y-1.5">
               {order.map((playerId, slotIdx) => {
-                const player = playerMap.get(playerId)
-                if (!player) return null
                 const slot = slots[slotIdx]
                 const isViolated = violations.includes(slotIdx)
-                const tag = getFormTag(player.recentForm, player.ops)
                 const canSwap = isSelecting && selectedBenchId !== null
+
+                // ---- Placeholder slot ----
+                if (isPlaceholder(playerId)) {
+                  return (
+                    <li
+                      key={playerId}
+                      onClick={() => canSwap && handleTapSlot(slotIdx)}
+                      className={[
+                        'flex overflow-hidden rounded-lg border border-dashed bg-field-paper transition-colors',
+                        isViolated ? 'border-red-400' : 'border-field-line-strong',
+                        canSwap ? 'cursor-pointer hover:border-field-gold hover:bg-field-gold/5' : '',
+                      ].join(' ')}
+                    >
+                      <div className={`w-1 shrink-0 ${isViolated ? 'bg-red-500' : 'bg-transparent'}`} aria-hidden />
+                      <div className="flex min-w-0 flex-1 items-center gap-1.5 px-3 py-2">
+                        <span className="w-5 shrink-0 text-right font-display text-sm font-semibold text-field-grass">
+                          {slotIdx + 1}
+                        </span>
+                        <span className="w-16 shrink-0 text-xs text-field-muted">{slot.role}</span>
+                        <span className="min-w-0 flex-1 truncate text-sm italic text-field-muted">
+                          Girl cycles in
+                        </span>
+                        <span className="w-4 shrink-0 text-center text-xs font-semibold text-pink-500">F</span>
+                        <div
+                          className="ml-1 flex shrink-0 items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleNudge(slotIdx, -1)}
+                            disabled={slotIdx === 0}
+                            aria-label="Move placeholder up"
+                            className="flex h-9 w-9 items-center justify-center rounded text-xs text-field-muted hover:bg-field-cream disabled:opacity-25"
+                          >▲</button>
+                          <button
+                            type="button"
+                            onClick={() => handleNudge(slotIdx, 1)}
+                            disabled={slotIdx === order.length - 1}
+                            aria-label="Move placeholder down"
+                            className="flex h-9 w-9 items-center justify-center rounded text-xs text-field-muted hover:bg-field-cream disabled:opacity-25"
+                          >▼</button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendToBench(slotIdx)}
+                            aria-label="Remove placeholder"
+                            className="flex h-9 w-9 items-center justify-center rounded text-xs text-field-clay hover:bg-field-clay/10"
+                            title="Remove"
+                          >✕</button>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                }
+
+                // ---- Real player slot ----
+                const player = playerMap.get(playerId)
+                if (!player) return null
+                const tag = getFormTag(player.recentForm, player.ops)
 
                 return (
                   <li
