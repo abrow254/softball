@@ -1,49 +1,67 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listPlayers } from '@/lib/db'
-import { getSchedule } from '@/lib/schedule'
-import { getStandings } from '@/lib/standings'
-import { LineupBuilder, type UpcomingGame } from '@/components/LineupBuilder'
+import { listPlayers, listGames, getLineup, listSeasons, getCurrentSeason, getLineupLabData } from '@/lib/db'
+import { LineupBuilderSaved } from '@/components/LineupBuilderSaved'
+import { SeasonSelector } from '@/components/SeasonSelector'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata = { title: 'Lineup Card — The Softball Team' }
 
-export default async function LineupPage() {
+export default async function LineupPage({
+  searchParams,
+}: {
+  searchParams: { season?: string }
+}) {
   const current = await getCurrentUser()
   if (!current) redirect('/login')
   if (current.role !== 'admin') redirect('/stats')
 
-  const today = new Date().toISOString().slice(0, 10)
-  const [players, schedule, standings] = await Promise.all([
-    listPlayers({ activeOnly: true }),
-    getSchedule(),
-    getStandings(),
-  ])
-
-  // Map each league team to its W-L-D so we can show the opponent's record.
-  const recordByTeam = new Map<string, string>()
-  if (standings) {
-    for (const pool of standings.pools) {
-      for (const r of pool.rows) recordByTeam.set(r.team, `${r.w}-${r.l}-${r.d}`)
-    }
+  const seasons = await listSeasons()
+  if (seasons.length === 0) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup card</h1>
+        <p className="rounded-lg border border-dashed border-field-line-strong bg-field-paper px-4 py-8 text-center text-field-muted">
+          No seasons yet.
+        </p>
+      </div>
+    )
   }
 
-  // Upcoming = not yet played and not in the past.
-  const upcoming: UpcomingGame[] = (schedule ?? [])
-    .filter((g) => !g.played && g.date >= today)
-    .map((g) => ({ date: g.date, opponent: g.opponent, record: recordByTeam.get(g.opponent) ?? null }))
+  const fallback = (await getCurrentSeason())?.id ?? seasons[0].id
+  const selectedSeasonId =
+    searchParams.season && seasons.some((s) => s.id === searchParams.season) ? searchParams.season : fallback
+
+  const [players, allGames] = await Promise.all([
+    getLineupLabData(selectedSeasonId),
+    listGames(selectedSeasonId),
+  ])
+
+  // Load all lineups for all games in this season
+  const allLineups = (
+    await Promise.all(allGames.map((g) => getLineup(g.id)))
+  ).flat()
 
   return (
     <div className="space-y-5">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup card</h1>
-        <p className="mt-1 text-sm text-field-muted">
-          Build the batting order, then print the dugout lineup card and a blank scorecard to score by hand at the
-          field. Nothing is saved — this is just for printing.
-        </p>
+        <SeasonSelector seasons={seasons} selectedId={selectedSeasonId} />
       </div>
-      <LineupBuilder players={players} upcoming={upcoming} />
+
+      <p className="text-xs text-field-muted">
+        Select an upcoming game, build the batting order with positions, and save. Previous week&apos;s lineup
+        loads automatically.
+      </p>
+
+      <LineupBuilderSaved
+        players={players}
+        seasons={seasons}
+        selectedSeasonId={selectedSeasonId}
+        allGames={allGames}
+        allLineups={allLineups}
+      />
     </div>
   )
 }
