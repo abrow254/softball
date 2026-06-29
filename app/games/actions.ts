@@ -57,3 +57,12 @@ export async function deleteGameAction(gameId: string): Promise<void> {
   revalidatePath('/stats')
   revalidatePath('/games')
 }
+
+// Recalculate PotG for games that have stats but no PotG set (e.g., from bulk imports)
+export async function recalculatePotGAction(gameId: string): Promise<void> {
+  await requireAdmin()
+  const { updatePotG } = await import('@/lib/db/games')
+  await updatePotG(gameId)
+  revalidatePath(`/games/${gameId}/card`)
+  revalidatePath('/schedule')
+}

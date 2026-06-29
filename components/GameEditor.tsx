@@ -7,7 +7,7 @@ import type { Player, Season } from '@/lib/types'
 import { computeStats, fmt3, type CountingLine } from '@/lib/formulas'
 import { emptyStatLine, SIT, type EditorRow, type SaveGameInput, type StatLine } from '@/lib/entry'
 import { gameResult } from '@/lib/types'
-import { saveGame, createPlayerAction } from '@/app/games/actions'
+import { saveGame, createPlayerAction, recalculatePotGAction } from '@/app/games/actions'
 import { aggregateCodes, type AtBatCode } from '@/lib/codes'
 import { matchName } from '@/lib/name-match'
 import type { ExtractedCard } from '@/lib/scorecard'
@@ -81,6 +81,7 @@ export function GameEditor({ mode, seasons, players: initialPlayers, initialGame
   const [unmatched, setUnmatched] = useState<UnmatchedEntry[]>([])
 
   const [saving, setSaving] = useState(false)
+  const [recalculating, setRecalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const result = gameResult(numOrNull(ourRuns), numOrNull(oppRuns))
@@ -256,6 +257,20 @@ export function GameEditor({ mode, seasons, players: initialPlayers, initialGame
       setError(err instanceof Error ? err.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleRecalculatePotG() {
+    if (!initialGame.id) return
+    setError(null)
+    setRecalculating(true)
+    try {
+      await recalculatePotGAction(initialGame.id)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to recalculate PotG')
+    } finally {
+      setRecalculating(false)
     }
   }
 
@@ -560,12 +575,22 @@ export function GameEditor({ mode, seasons, players: initialPlayers, initialGame
           {saving ? 'Saving…' : mode === 'new' ? 'Create game' : 'Save changes'}
         </button>
         {initialGame.id && (
-          <Link
-            href={`/games/${initialGame.id}/card`}
-            className="rounded-md border border-field-line-strong px-4 py-2 font-medium text-field-ink hover:bg-field-cream"
-          >
-            Printable card
-          </Link>
+          <>
+            <button
+              type="button"
+              onClick={handleRecalculatePotG}
+              disabled={recalculating}
+              className="rounded-md border border-field-line px-3 py-2 text-sm font-medium text-field-ink hover:bg-field-cream disabled:opacity-60"
+            >
+              {recalculating ? 'Recalculating…' : 'Recalculate PotG'}
+            </button>
+            <Link
+              href={`/games/${initialGame.id}/card`}
+              className="rounded-md border border-field-line-strong px-4 py-2 font-medium text-field-ink hover:bg-field-cream"
+            >
+              Printable card
+            </Link>
+          </>
         )}
         <Link href="/games" className="text-sm text-field-muted hover:text-field-ink">
           Back to games
