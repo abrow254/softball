@@ -23,6 +23,7 @@ export const TEAM_PHOTOS: TeamPhoto[] = [
   { src: '/team/team-1.jpg', year: 2022, term: 'Summer', caption: 'Summer 2022' },
   { src: '/team/team-4.jpg', year: 2023, term: 'Summer', caption: 'Summer 2023' },
   { src: '/team/team-5.jpg', year: 2023, term: 'Fall', caption: 'Fall 2023' },
+  { src: '/team/team-6.jpg', year: 2024, term: 'Summer', caption: 'Summer 2024' },
   { src: '/team/team-3.jpg', year: 2024, term: 'Fall', caption: 'Fall 2024' },
   { src: '/team/team-2.jpg', year: 2025, term: 'Summer', caption: 'Summer 2025' },
 ]
