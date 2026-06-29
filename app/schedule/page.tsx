@@ -1,5 +1,7 @@
 import { getSchedule, SCHEDULE_SOURCE_URL, type ScheduleGame } from '@/lib/schedule'
 import { getStandings, STANDINGS_SOURCE } from '@/lib/standings'
+import { listGames } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
 
 export const revalidate = 3600
 
@@ -37,7 +39,37 @@ function Tile({ label, value }: { label: string; value: string }) {
 
 export default async function SchedulePage() {
   const today = new Date().toISOString().slice(0, 10)
-  const [schedule, standings] = await Promise.all([getSchedule(), getStandings()])
+  const [schedule, standings, currentSeason] = await Promise.all([
+    getSchedule(),
+    getStandings(),
+    (async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('seasons')
+        .select('id')
+        .eq('is_current', true)
+        .maybeSingle()
+      return data
+    })(),
+  ])
+
+  // Load games from database to get PotG info
+  let gamesByOpponent: Map<string, { potg_player_id: string | null; potg_player_name: string | null }> = new Map()
+  if (currentSeason && schedule) {
+    const games = await listGames(currentSeason.id)
+    const supabase = createClient()
+    const { data: players } = await supabase.from('players').select('id, name')
+    const playerMap = new Map((players ?? []).map((p) => [p.id, p.name]))
+
+    for (const g of games) {
+      if (g.potg_player_id) {
+        gamesByOpponent.set(g.opponent ?? '', {
+          potg_player_id: g.potg_player_id,
+          potg_player_name: (playerMap.get(g.potg_player_id) ?? null) as string | null,
+        })
+      }
+    }
+  }
 
   if (!schedule || schedule.length === 0) {
     return (
@@ -136,17 +168,23 @@ export default async function SchedulePage() {
           <ul className="divide-y divide-field-line overflow-hidden rounded-lg border border-field-line">
             {played.map((g) => {
               const res = resultOf(g)
+              const potg = gamesByOpponent.get(g.opponent ?? '')
               return (
-                <li key={`${g.date}-${g.opponent}`} className="flex items-center justify-between gap-3 bg-field-paper px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="truncate font-medium text-field-ink">{g.opponent}</div>
-                    <div className="text-xs text-field-muted">{shortDate(g.date)}</div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="tabular text-sm text-field-ink">
-                      {g.ourScore}–{g.oppScore}
-                    </span>
-                    {res && <span className={`w-4 text-right font-semibold ${RESULT_CLASS[res]}`}>{res}</span>}
+                <li key={`${g.date}-${g.opponent}`} className="bg-field-paper px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-field-ink">{g.opponent}</div>
+                      <div className="text-xs text-field-muted">{shortDate(g.date)}</div>
+                      {potg?.potg_player_name && (
+                        <div className="mt-0.5 text-xs text-field-grass font-semibold">⭐ {potg.potg_player_name}</div>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="tabular text-sm text-field-ink">
+                        {g.ourScore}–{g.oppScore}
+                      </span>
+                      {res && <span className={`w-4 text-right font-semibold ${RESULT_CLASS[res]}`}>{res}</span>}
+                    </div>
                   </div>
                 </li>
               )
