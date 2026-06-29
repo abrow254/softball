@@ -51,8 +51,17 @@ body {
     margin: 0;
   }
 
+  /* Keep the whole scorecard on one page: never split a row across a page
+     break, and keep each table block intact. */
+  .print-card tr,
+  .print-card thead,
+  .print-card table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   @page {
     size: letter portrait;
-    margin: 12mm;
+    margin: 10mm;
   }
 }
