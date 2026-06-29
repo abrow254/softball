@@ -629,12 +629,14 @@ export function LineupLab({
                     />
 
                     <div className="min-w-0 flex-1 px-3 py-2">
-                      {/* Top row: slot number, role, name, gender, badge, actions */}
+                      {/* Top row: slot number, name, gender, badge, actions.
+                          Role + position selector move to the second row so the
+                          name always has room on narrow screens. */}
                       <div className="flex items-center gap-1.5">
                         <span className="w-5 shrink-0 text-right font-display text-sm font-semibold text-field-grass">
                           {slotIdx + 1}
                         </span>
-                        <span className="w-16 shrink-0 text-xs text-field-muted">
+                        <span className="hidden w-14 shrink-0 text-xs text-field-muted sm:block">
                           {slot.role}
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-field-ink">
@@ -642,12 +644,47 @@ export function LineupLab({
                         </span>
                         <GenderMark gender={player.gender} />
                         <FormBadge tag={tag} />
+                        <div
+                          className="ml-0.5 flex shrink-0 items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleNudge(slotIdx, -1)}
+                            disabled={slotIdx === 0}
+                            aria-label={`Move ${player.name} up`}
+                            className="flex h-9 w-8 items-center justify-center rounded text-xs text-field-muted hover:bg-field-cream disabled:opacity-25"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleNudge(slotIdx, 1)}
+                            disabled={slotIdx === order.length - 1}
+                            aria-label={`Move ${player.name} down`}
+                            className="flex h-9 w-8 items-center justify-center rounded text-xs text-field-muted hover:bg-field-cream disabled:opacity-25"
+                          >
+                            ▼
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSendToBench(slotIdx)}
+                            aria-label={`Send ${player.name} to bench`}
+                            className="flex h-9 w-8 items-center justify-center rounded text-xs text-field-clay hover:bg-field-clay/10"
+                            title="Send to bench"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      {/* Bottom row: position selector + stats + sparkline */}
+                      <div className="mt-1 flex items-center gap-2 pl-7">
                         {onPositionChange && (
                           <select
                             value={positions?.get(playerId) || ''}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => onPositionChange(playerId, e.target.value)}
-                            className="ml-1 shrink-0 rounded border border-field-line px-1.5 py-1 text-xs text-field-ink"
+                            className="shrink-0 rounded border border-field-line px-1.5 py-1 text-xs text-field-ink"
                             aria-label={`Position for ${player.name}`}
                           >
                             <option value="">Pos</option>
@@ -658,42 +695,9 @@ export function LineupLab({
                             ))}
                           </select>
                         )}
-                        <div
-                          className="ml-1 flex shrink-0 items-center gap-0.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleNudge(slotIdx, -1)}
-                            disabled={slotIdx === 0}
-                            aria-label={`Move ${player.name} up`}
-                            className="flex h-9 w-9 items-center justify-center rounded text-xs text-field-muted hover:bg-field-cream disabled:opacity-25"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleNudge(slotIdx, 1)}
-                            disabled={slotIdx === order.length - 1}
-                            aria-label={`Move ${player.name} down`}
-                            className="flex h-9 w-9 items-center justify-center rounded text-xs text-field-muted hover:bg-field-cream disabled:opacity-25"
-                          >
-                            ▼
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSendToBench(slotIdx)}
-                            aria-label={`Send ${player.name} to bench`}
-                            className="flex h-9 w-9 items-center justify-center rounded text-xs text-field-clay hover:bg-field-clay/10"
-                            title="Send to bench"
-                          >
-                            ✕
-                          </button>
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <StatRow player={player} />
                         </div>
-                      </div>
-                      {/* Bottom row: stats + sparkline */}
-                      <div className="mt-1 pl-7">
-                        <StatRow player={player} />
                       </div>
                     </div>
                   </li>
