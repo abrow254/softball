@@ -3,6 +3,7 @@ import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import { SeasonPhotoBanner } from '@/components/SeasonPhotoBanner'
 import { photoForSeason } from '@/lib/teamPhotos'
+import { recordForSeason } from '@/lib/seasonRecords'
 
 function RecordTile({ label, value }: { label: string; value: string }) {
   return (
@@ -31,7 +32,8 @@ export default async function StatsPage({
     )
   }
 
-  const fallback = (await getCurrentSeason())?.id ?? seasons[0].id
+  const currentSeason = await getCurrentSeason()
+  const fallback = currentSeason?.id ?? seasons[0].id
   const selectedId = searchParams.season && seasons.some((s) => s.id === searchParams.season)
     ? searchParams.season
     : fallback
@@ -39,8 +41,9 @@ export default async function StatsPage({
   const [rows, games] = await Promise.all([getSeasonStats(selectedId), listGames(selectedId)])
   const selectedSeason = seasons.find((s) => s.id === selectedId)
   const photo = selectedSeason ? photoForSeason(selectedSeason.year, selectedSeason.term) : undefined
+  const isCurrent = selectedId === currentSeason?.id
 
-  // Season record from this season's played, non-aggregate games.
+  // Live record from this season's played, non-aggregate games.
   let w = 0, l = 0, d = 0, rf = 0, ra = 0, gp = 0
   for (const g of games) {
     if (g.is_aggregate || g.our_runs == null || g.opp_runs == null) continue
@@ -51,7 +54,32 @@ export default async function StatsPage({
     else if (g.our_runs < g.opp_runs) l++
     else d++
   }
-  const diff = rf - ra
+
+  // Season summary: official record for past seasons, live-from-games for the
+  // current season. (Win % is W / games played, per the records sheet.)
+  const reg = selectedSeason ? recordForSeason(selectedSeason.year, selectedSeason.term) : undefined
+  const summary =
+    reg && !isCurrent
+      ? {
+          w: reg.w, l: reg.l, d: reg.d,
+          winPct: reg.winPct,
+          rsPerG: reg.rsPerG, raPerG: reg.raPerG,
+          runDiff: reg.runDiff,
+          finished: reg.finished as string | undefined,
+          rankingPoints: reg.rankingPoints as number | undefined,
+        }
+      : gp > 0
+        ? {
+            w, l, d,
+            winPct: w / gp,
+            rsPerG: rf / gp, raPerG: ra / gp,
+            runDiff: rf - ra,
+            finished: isCurrent ? 'In progress' : undefined,
+            rankingPoints: undefined as number | undefined,
+          }
+        : null
+
+  const fmtPct = (n: number) => n.toFixed(3).replace(/^0/, '')
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
@@ -62,12 +90,21 @@ export default async function StatsPage({
 
       {photo && <SeasonPhotoBanner src={photo.src} caption={photo.caption} />}
 
-      {gp > 0 && (
-        <section className="grid grid-cols-4 gap-2">
-          <RecordTile label="Record" value={`${w}-${l}-${d}`} />
-          <RecordTile label="Run Diff" value={diff > 0 ? `+${diff}` : String(diff)} />
-          <RecordTile label="Runs For" value={String(rf)} />
-          <RecordTile label="Runs Against" value={String(ra)} />
+      {summary && (
+        <section className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <RecordTile label="Record" value={`${summary.w}-${summary.l}-${summary.d}`} />
+            <RecordTile label="Win %" value={fmtPct(summary.winPct)} />
+            <RecordTile
+              label="Run Diff"
+              value={summary.runDiff > 0 ? `+${summary.runDiff}` : String(summary.runDiff)}
+            />
+            <RecordTile label="Finish" value={summary.finished ?? '—'} />
+          </div>
+          <p className="text-xs text-field-muted">
+            {summary.rsPerG.toFixed(1)} runs/game · {summary.raPerG.toFixed(1)} allowed
+            {summary.rankingPoints != null ? ` · ${summary.rankingPoints} ranking pts` : ''}
+          </p>
         </section>
       )}
 

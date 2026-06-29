@@ -50,14 +50,13 @@ export function NavMenu({
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
 
-  const links = isAdmin ? [...PUBLIC_LINKS, ...ADMIN_LINKS] : PUBLIC_LINKS
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
   return (
     <>
       {/* Desktop: inline links */}
       <nav className="hidden items-center gap-4 text-sm sm:flex">
-        {links.map((l) => (
+        {PUBLIC_LINKS.map((l) => (
           <Link
             key={l.href}
             href={l.href}
@@ -66,6 +65,22 @@ export function NavMenu({
             {l.label}
           </Link>
         ))}
+        {isAdmin && (
+          <>
+            <span className="h-4 w-px bg-white/30" aria-hidden />
+            {ADMIN_LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={
+                  isActive(l.href) ? 'font-medium text-field-gold' : 'text-field-gold/80 hover:text-field-gold'
+                }
+              >
+                {l.label}
+              </Link>
+            ))}
+          </>
+        )}
         {signedIn ? (
           <div className="flex items-center gap-3">
             {isAdmin && (
@@ -123,7 +138,7 @@ export function NavMenu({
       {open && (
         <div className="absolute inset-x-0 top-full z-30 border-t border-white/15 bg-field-grass shadow-lg sm:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col px-4 py-2">
-            {links.map((l) => (
+            {PUBLIC_LINKS.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -135,6 +150,27 @@ export function NavMenu({
                 {l.label}
               </Link>
             ))}
+            {isAdmin && (
+              <>
+                <div className="mt-2 border-t border-white/15 pt-2">
+                  <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-field-gold/80">
+                    Admin
+                  </p>
+                </div>
+                {ADMIN_LINKS.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    className={[
+                      'flex min-h-[44px] items-center rounded-md px-2 text-base',
+                      isActive(l.href) ? 'bg-white/10 font-medium text-field-gold' : 'text-field-gold/90',
+                    ].join(' ')}
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </>
+            )}
             <div className="mt-2 border-t border-white/15 pt-2">
               {signedIn ? (
                 <div className="flex items-center justify-between">
