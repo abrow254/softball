@@ -2,46 +2,52 @@
 
 import { useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
-import type { Game, LineupLabPlayer, Season } from '@/lib/types'
+import type { LineupLabPlayer, Season } from '@/lib/types'
+import type { OppAnalysis } from '@/lib/opponentScouting'
 import { LineupLab } from '@/components/LineupLab'
+import { OpponentScouting } from '@/components/OpponentScouting'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
 
 type CardTarget = 'lineup' | 'scorecard'
 
+// An upcoming game from the scraped schedule, with opponent scouting attached.
+export interface UpcomingMatch {
+  date: string
+  opponent: string
+  time: string | null
+  record: string | null
+  analysis: OppAnalysis | null
+}
+
 interface LineupLabCompleteProps {
   players: LineupLabPlayer[]
   seasons: Season[]
   selectedSeasonId: string
-  allGames: Game[]
+  upcomingMatches: UpcomingMatch[]
+}
+
+function prettyDate(iso: string): string {
+  return new Date(`${iso}T00:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 export function LineupLabComplete({
   players,
   seasons,
   selectedSeasonId,
-  allGames,
+  upcomingMatches,
 }: LineupLabCompleteProps) {
-  const today = new Date().toISOString().slice(0, 10)
-
-  // Upcoming games for this season — earliest first. "Next game" = the first
-  // one whose date is today or later, so the day after a game the card rolls
-  // forward to the next matchup automatically.
-  const upcomingGames = useMemo(
-    () =>
-      allGames
-        .filter((g) => g.season_id === selectedSeasonId && g.game_date && g.game_date >= today)
-        .sort((a, b) => (a.game_date ?? '').localeCompare(b.game_date ?? '')),
-    [allGames, selectedSeasonId, today],
-  )
-
-  // Auto-select the next game on load.
-  const [selectedGameId, setSelectedGameId] = useState<string>(() => upcomingGames[0]?.id ?? '')
+  // Auto-select the next game (earliest upcoming) on load.
+  const [selectedDate, setSelectedDate] = useState<string>(() => upcomingMatches[0]?.date ?? '')
   const [order, setOrder] = useState<string[]>([])
   const [positions, setPositions] = useState<Map<string, string>>(new Map())
   const [target, setTarget] = useState<CardTarget>('lineup')
 
-  const selectedGame = upcomingGames.find((g) => g.id === selectedGameId)
+  const selectedMatch = upcomingMatches.find((m) => m.date === selectedDate) ?? null
   const playerMap = useMemo(() => new Map(players.map((p) => [p.player_id, p])), [players])
 
   function handlePositionChange(playerId: string, pos: string) {
@@ -58,7 +64,7 @@ export function LineupLabComplete({
     window.print()
   }
 
-  const cardTitle = selectedGame?.opponent ? `v. ${selectedGame.opponent}` : 'The Softball Team'
+  const cardTitle = selectedMatch?.opponent ? `v. ${selectedMatch.opponent}` : 'The Softball Team'
 
   const lineupRows: LineupCardRow[] = order.map((id, i) => ({
     batting_order: i + 1,
@@ -72,20 +78,21 @@ export function LineupLabComplete({
     starting_pos: positions.get(id) || '',
   }))
 
-  // The game-selection header injected at the top of the embedded Lineup Lab.
+  // Game header (with opponent scouting) injected at the top of the Lineup Lab.
   const gameHeader = (
     <div className="space-y-3">
       <div className="rounded-lg border border-field-line bg-field-paper p-4">
-        <label className="block text-sm font-semibold text-field-ink">Game</label>
-        {upcomingGames.length > 0 ? (
+        <label className="block text-sm font-semibold text-field-ink">Next game</label>
+        {upcomingMatches.length > 0 ? (
           <select
-            value={selectedGameId}
-            onChange={(e) => setSelectedGameId(e.target.value)}
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
             className="mt-2 w-full rounded border border-field-line px-3 py-2 text-sm"
           >
-            {upcomingGames.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.game_date} vs {g.opponent ?? 'Unknown'}
+            {upcomingMatches.map((m) => (
+              <option key={m.date} value={m.date}>
+                {prettyDate(m.date)} vs {m.opponent}
+                {m.time ? ` · ${m.time}` : ''}
               </option>
             ))}
           </select>
@@ -93,11 +100,27 @@ export function LineupLabComplete({
           <p className="mt-2 text-sm text-field-muted">No upcoming games scheduled.</p>
         )}
       </div>
-      {selectedGame && (
-        <div className="rounded-lg bg-field-cream/50 p-3">
-          <p className="text-sm text-field-muted">
-            {selectedGame.game_date} • <strong>{selectedGame.opponent}</strong>
-          </p>
+
+      {selectedMatch && (
+        <div className="rounded-lg border border-field-line bg-field-cream/40 p-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm text-field-ink">
+              <strong>{selectedMatch.opponent}</strong>
+            </p>
+            <p className="text-xs text-field-muted">
+              {prettyDate(selectedMatch.date)}
+              {selectedMatch.time ? ` · ${selectedMatch.time}` : ''}
+            </p>
+          </div>
+          {selectedMatch.analysis ? (
+            <div className="mt-2">
+              <OpponentScouting analysis={selectedMatch.analysis} record={selectedMatch.record} />
+            </div>
+          ) : (
+            selectedMatch.record && (
+              <p className="mt-1 text-xs text-field-muted">Opp record {selectedMatch.record}</p>
+            )
+          )}
         </div>
       )}
     </div>
@@ -106,7 +129,7 @@ export function LineupLabComplete({
   return (
     <div className="space-y-6">
       {/* Full Lineup Lab — trends, The Read, auto-optimize — with inline
-          position selectors and game selection injected as the header. */}
+          position selectors and the next-game header injected on top. */}
       <LineupLab
         players={players}
         seasons={seasons}
@@ -148,8 +171,8 @@ export function LineupLabComplete({
             {target === 'scorecard' && (
               <div className="rounded-lg border border-field-line bg-field-paper p-5 shadow-sm">
                 <PrintableCard
-                  opponent={selectedGame?.opponent ?? null}
-                  date={selectedGame?.game_date ?? null}
+                  opponent={selectedMatch?.opponent ?? null}
+                  date={selectedMatch?.date ?? null}
                   rows={scorecardRows}
                 />
               </div>

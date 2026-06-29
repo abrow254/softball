@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { getSchedule, type ScheduleGame } from '@/lib/schedule'
-import { getStandings, type Standings } from '@/lib/standings'
+import { getStandings } from '@/lib/standings'
 import { getCurrentSeason, getSeasonStats, listGames, getBoxScore } from '@/lib/db'
 import { selectPotG, formatPotGLine } from '@/lib/potg'
 import { TeamPhotoHero } from '@/components/TeamPhotoHero'
+import { OpponentScouting } from '@/components/OpponentScouting'
+import { analyzeOpponent } from '@/lib/opponentScouting'
 import { allPhotoSrcs } from '@/lib/teamPhotos'
 import type { SeasonStatRow } from '@/lib/types'
 
@@ -40,69 +42,6 @@ const ordinal = (n: number) => {
 
 const normOpp = (s: string | null | undefined) =>
   (s ?? '').toLowerCase().replace(/^the\s+/, '').replace(/\s+/g, ' ').trim()
-
-type Strength = 'strong' | 'average' | 'weak'
-
-interface OppAnalysis {
-  diff: number
-  rpgFor: number
-  rpgAgainst: number
-  batting: Strength
-  defence: Strength
-  read: string
-}
-
-// Sizes up the next opponent from the league standings: are they good at
-// batting (runs scored vs league avg), defence (runs allowed vs league avg),
-// or both — plus a one-line read framed from our perspective.
-function analyzeOpponent(standings: Standings, teamName: string): OppAnalysis | null {
-  const rows = standings.pools.flatMap((p) => p.rows).map((r) => ({ ...r, gp: r.w + r.l + r.d }))
-  const opp = rows.find((r) => normOpp(r.team) === normOpp(teamName))
-  if (!opp || opp.gp === 0) return null
-
-  const played = rows.filter((r) => r.gp > 0)
-  const avgFor = played.reduce((s, r) => s + r.pf / r.gp, 0) / played.length
-  const avgAgainst = played.reduce((s, r) => s + r.pa / r.gp, 0) / played.length
-
-  const rpgFor = opp.pf / opp.gp
-  const rpgAgainst = opp.pa / opp.gp
-  const HI = 1.08
-  const LO = 0.92
-
-  const batting: Strength = rpgFor > avgFor * HI ? 'strong' : rpgFor < avgFor * LO ? 'weak' : 'average'
-  // Defence: fewer runs allowed is better.
-  const defence: Strength =
-    rpgAgainst < avgAgainst * LO ? 'strong' : rpgAgainst > avgAgainst * HI ? 'weak' : 'average'
-
-  let read: string
-  if (batting === 'strong' && defence === 'strong') read = 'Complete team — bring your best.'
-  else if (batting === 'strong' && defence === 'weak') read = 'Big bats but leaky — win the shootout.'
-  else if (batting === 'weak' && defence === 'strong') read = 'Stingy defence, light bats — small ball wins.'
-  else if (batting === 'weak' && defence === 'weak') read = 'Beatable on both sides — take care of business.'
-  else if (batting === 'strong') read = 'Watch the bats — they can put up runs.'
-  else if (defence === 'strong') read = 'Tough defence — scratch runs across.'
-  else if (batting === 'weak') read = 'Light-hitting — keep them quiet.'
-  else if (defence === 'weak') read = 'Leaky defence — pour it on.'
-  else read = 'Middle of the pack — even matchup.'
-
-  return { diff: opp.diff, rpgFor, rpgAgainst, batting, defence, read }
-}
-
-const STRENGTH_LABEL: Record<Strength, string> = { strong: 'Strong', average: 'Average', weak: 'Weak' }
-// Framed from our view: their strength = caution (clay), their weakness = our opening (grass).
-const STRENGTH_CLASS: Record<Strength, string> = {
-  strong: 'bg-field-clay/10 text-field-clay',
-  average: 'bg-field-cream text-field-muted',
-  weak: 'bg-field-grass/10 text-field-grass',
-}
-
-function StrengthTag({ kind, level }: { kind: string; level: Strength }) {
-  return (
-    <span className={`rounded px-2 py-0.5 text-xs font-medium ${STRENGTH_CLASS[level]}`}>
-      {kind}: {STRENGTH_LABEL[level]}
-    </span>
-  )
-}
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
@@ -260,44 +199,16 @@ export default async function HomePage() {
                 {nextGame.time ? ` · ${nextGame.time}` : ''}
               </div>
 
-              {/* Scouting line */}
-              {(recordByTeam.get(nextGame.opponent) || oppAnalysis) && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {recordByTeam.get(nextGame.opponent) && (
-                    <span className="rounded bg-field-cream px-2 py-0.5 text-xs font-medium text-field-muted">
-                      {recordByTeam.get(nextGame.opponent)}
-                    </span>
-                  )}
-                  {oppAnalysis && (
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs font-medium ${
-                        oppAnalysis.diff > 0
-                          ? 'bg-field-clay/10 text-field-clay'
-                          : oppAnalysis.diff < 0
-                            ? 'bg-field-grass/10 text-field-grass'
-                            : 'bg-field-cream text-field-muted'
-                      }`}
-                    >
-                      {oppAnalysis.diff > 0 ? '+' : ''}
-                      {oppAnalysis.diff} run diff
-                    </span>
-                  )}
+              {oppAnalysis ? (
+                <div className="mt-2">
+                  <OpponentScouting analysis={oppAnalysis} record={recordByTeam.get(nextGame.opponent)} />
                 </div>
-              )}
-
-              {oppAnalysis && (
-                <div className="mt-2 space-y-1.5">
-                  <div className="flex flex-wrap gap-2">
-                    <StrengthTag kind="Bats" level={oppAnalysis.batting} />
-                    <StrengthTag kind="Defence" level={oppAnalysis.defence} />
+              ) : (
+                recordByTeam.get(nextGame.opponent) && (
+                  <div className="mt-2 inline-block rounded bg-field-cream px-2 py-0.5 text-xs font-medium text-field-muted">
+                    {recordByTeam.get(nextGame.opponent)}
                   </div>
-                  <p className="text-xs text-field-muted">
-                    {oppAnalysis.read}{' '}
-                    <span className="text-field-muted/70">
-                      ({oppAnalysis.rpgFor.toFixed(1)} RS · {oppAnalysis.rpgAgainst.toFixed(1)} RA / game)
-                    </span>
-                  </p>
-                </div>
+                )
               )}
             </Link>
           ) : (

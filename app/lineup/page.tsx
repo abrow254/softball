@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listSeasons, getCurrentSeason, getLineupLabData, listGames } from '@/lib/db'
-import { LineupLabComplete } from '@/components/LineupLabComplete'
+import { listSeasons, getCurrentSeason, getLineupLabData } from '@/lib/db'
+import { getSchedule } from '@/lib/schedule'
+import { getStandings } from '@/lib/standings'
+import { analyzeOpponent, type OppAnalysis } from '@/lib/opponentScouting'
+import { LineupLabComplete, type UpcomingMatch } from '@/components/LineupLabComplete'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,10 +35,33 @@ export default async function LineupPage({
   const selectedSeasonId =
     searchParams.season && seasons.some((s) => s.id === searchParams.season) ? searchParams.season : fallback
 
-  const [players, allGames] = await Promise.all([
+  const [players, schedule, standings] = await Promise.all([
     getLineupLabData(selectedSeasonId),
-    listGames(selectedSeasonId),
+    getSchedule(),
+    getStandings(),
   ])
+
+  // Upcoming games come from the scraped schedule (the DB only has games once
+  // they've been played and entered). Each carries opponent scouting derived
+  // from the standings.
+  const today = new Date().toISOString().slice(0, 10)
+  const recordByTeam = new Map<string, string>()
+  if (standings) {
+    for (const pool of standings.pools) {
+      for (const r of pool.rows) recordByTeam.set(r.team, `${r.w}-${r.l}-${r.d}`)
+    }
+  }
+
+  const upcomingMatches: UpcomingMatch[] = (schedule ?? [])
+    .filter((g) => !g.played && g.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((g) => ({
+      date: g.date,
+      opponent: g.opponent,
+      time: g.time,
+      record: recordByTeam.get(g.opponent) ?? null,
+      analysis: standings ? (analyzeOpponent(standings, g.opponent) as OppAnalysis | null) : null,
+    }))
 
   return (
     <LineupLabComplete
@@ -43,7 +69,7 @@ export default async function LineupPage({
       players={players}
       seasons={seasons}
       selectedSeasonId={selectedSeasonId}
-      allGames={allGames}
+      upcomingMatches={upcomingMatches}
     />
   )
 }

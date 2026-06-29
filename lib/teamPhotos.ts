@@ -20,12 +20,14 @@ export interface TeamPhoto {
 // Commit the image files to /public/team with these exact names; any whose file
 // is missing is skipped gracefully (hero + banner fall back).
 export const TEAM_PHOTOS: TeamPhoto[] = [
-  { src: '/team/summer-2022.jpg', year: 2022, term: 'Summer', caption: 'Summer 2022' },
-  { src: '/team/summer-2023.jpg', year: 2023, term: 'Summer', caption: 'Summer 2023' },
-  { src: '/team/fall-2023.jpg', year: 2023, term: 'Fall', caption: 'Fall 2023' },
-  { src: '/team/summer-2024.jpg', year: 2024, term: 'Summer', caption: 'Summer 2024' },
-  { src: '/team/fall-2024.jpg', year: 2024, term: 'Fall', caption: 'Fall 2024' },
-  { src: '/team/summer-2025.jpg', year: 2025, term: 'Summer', caption: 'Summer 2025' },
+  // Filenames match the files as saved (spaces encoded as %20; extension case
+  // matters on Vercel's case-sensitive filesystem).
+  { src: '/team/summer%202022.jpg', year: 2022, term: 'Summer', caption: 'Summer 2022' },
+  { src: '/team/summer%202023.JPG', year: 2023, term: 'Summer', caption: 'Summer 2023' },
+  { src: '/team/fall%202023.JPG', year: 2023, term: 'Fall', caption: 'Fall 2023' },
+  { src: '/team/summer%202024.JPEG', year: 2024, term: 'Summer', caption: 'Summer 2024' },
+  { src: '/team/fall%202024.jpeg', year: 2024, term: 'Fall', caption: 'Fall 2024' },
+  { src: '/team/summer%202025.jpg', year: 2025, term: 'Summer', caption: 'Summer 2025' },
 ]
 
 // Photo for a given season, if one exists.
