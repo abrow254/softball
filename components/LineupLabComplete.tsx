@@ -85,9 +85,9 @@ export function LineupLabComplete({ players, seasons, selectedSeasonId }: Lineup
 
       {!empty && (
         <>
-          {/* ---- Position Assignment ---- */}
+          {/* ---- Batting Order with inline position assignment ---- */}
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Positions</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Batting Order & Positions</h2>
             <div className="space-y-1.5">
               {optimizedOrder.map((playerId, idx) => {
                 const player = playerMap.get(playerId)
