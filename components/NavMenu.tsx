@@ -21,6 +21,7 @@ const PUBLIC_LINKS: NavLink[] = [
 const ADMIN_LINKS: NavLink[] = [
   { href: '/lineup', label: 'Lineup' },
   { href: '/games', label: 'Games' },
+  { href: '/admin/roster', label: 'Roster' },
 ]
 
 export function NavMenu({

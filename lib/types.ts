@@ -12,6 +12,8 @@ export interface Player {
   name: string
   is_regular: boolean
   active: boolean
+  gender: Gender | null
+  positions: string[]
   created_at: string
 }
 

@@ -11,13 +11,12 @@ import {
   isFeasible,
 } from '@/lib/optimizer'
 import { fmt3 } from '@/lib/formulas'
+import { LINEUP_POSITIONS as POSITIONS } from '@/lib/positions'
 
 // ---- Constants ---------------------------------------------------------------
 
 const HOT_RATIO = 1.06
 const COLD_RATIO = 0.94
-
-const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'Rover', 'BE']
 
 // ---- Placeholder helpers -------------------------------------------------------
 
