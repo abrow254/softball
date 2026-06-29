@@ -1,8 +1,17 @@
-import { listSeasons, getCurrentSeason, getSeasonStats } from '@/lib/db'
+import { listSeasons, getCurrentSeason, getSeasonStats, listGames } from '@/lib/db'
 import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import { SeasonPhotoBanner } from '@/components/SeasonPhotoBanner'
 import { photoForSeason } from '@/lib/teamPhotos'
+
+function RecordTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center">
+      <div className="tabular text-lg font-semibold text-field-ink">{value}</div>
+      <div className="text-[11px] uppercase tracking-wide text-field-muted">{label}</div>
+    </div>
+  )
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -27,9 +36,22 @@ export default async function StatsPage({
     ? searchParams.season
     : fallback
 
-  const rows = await getSeasonStats(selectedId)
+  const [rows, games] = await Promise.all([getSeasonStats(selectedId), listGames(selectedId)])
   const selectedSeason = seasons.find((s) => s.id === selectedId)
   const photo = selectedSeason ? photoForSeason(selectedSeason.year, selectedSeason.term) : undefined
+
+  // Season record from this season's played, non-aggregate games.
+  let w = 0, l = 0, d = 0, rf = 0, ra = 0, gp = 0
+  for (const g of games) {
+    if (g.is_aggregate || g.our_runs == null || g.opp_runs == null) continue
+    gp++
+    rf += g.our_runs
+    ra += g.opp_runs
+    if (g.our_runs > g.opp_runs) w++
+    else if (g.our_runs < g.opp_runs) l++
+    else d++
+  }
+  const diff = rf - ra
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
@@ -39,6 +61,15 @@ export default async function StatsPage({
       </div>
 
       {photo && <SeasonPhotoBanner src={photo.src} caption={photo.caption} />}
+
+      {gp > 0 && (
+        <section className="grid grid-cols-4 gap-2">
+          <RecordTile label="Record" value={`${w}-${l}-${d}`} />
+          <RecordTile label="Run Diff" value={diff > 0 ? `+${diff}` : String(diff)} />
+          <RecordTile label="Runs For" value={String(rf)} />
+          <RecordTile label="Runs Against" value={String(ra)} />
+        </section>
+      )}
 
       <StatsGrid rows={rows} />
 

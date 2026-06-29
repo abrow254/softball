@@ -10,19 +10,19 @@ export function SeasonPhotoBanner({ src, caption }: { src: string; caption?: str
   if (failed) return null
 
   return (
-    <figure className="overflow-hidden rounded-xl border border-field-line bg-field-paper">
-      <div className="relative aspect-[16/9] w-full sm:aspect-[21/9]">
+    <figure className="overflow-hidden rounded-lg border border-field-line bg-field-paper">
+      <div className="relative h-28 w-full sm:h-36">
         <Image
           src={src}
           alt={caption ?? 'Team photo'}
           fill
           sizes="(max-width: 768px) 100vw, 1152px"
           onError={() => setFailed(true)}
-          className="object-cover"
+          className="object-cover object-top"
         />
       </div>
       {caption && (
-        <figcaption className="px-3 py-2 text-xs font-medium text-field-muted">📸 {caption}</figcaption>
+        <figcaption className="px-3 py-1.5 text-xs font-medium text-field-muted">📸 {caption}</figcaption>
       )}
     </figure>
   )
