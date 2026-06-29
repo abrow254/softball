@@ -1,32 +1,46 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 
 interface TeamPhotoHeroProps {
   photos: string[]
-  title: string
   subtitle?: string | null
 }
 
-// Full-width hero. Rotates through team photos with a slow crossfade; falls
-// back to a grass-gradient wordmark block when no photos are configured yet
-// (drop files in /public/team and list them in TEAM_PHOTOS on the dashboard).
-export function TeamPhotoHero({ photos, title, subtitle }: TeamPhotoHeroProps) {
+// Full-width hero. Rotates through team photos with a slow crossfade; any photo
+// whose file is missing (404) is skipped, and if none load it falls back to a
+// grass-gradient wordmark block. So it's safe to list photos in the registry
+// before their files are committed.
+export function TeamPhotoHero({ photos, subtitle }: TeamPhotoHeroProps) {
+  const [failed, setFailed] = useState<Set<string>>(new Set())
+  const visible = useMemo(() => photos.filter((p) => !failed.has(p)), [photos, failed])
   const [idx, setIdx] = useState(0)
 
   useEffect(() => {
-    if (photos.length < 2) return
-    const t = setInterval(() => setIdx((i) => (i + 1) % photos.length), 5000)
+    if (visible.length < 2) return
+    const t = setInterval(() => setIdx((i) => (i + 1) % visible.length), 5000)
     return () => clearInterval(t)
-  }, [photos.length])
+  }, [visible.length])
 
-  const hasPhotos = photos.length > 0
+  // Keep the active index in range if the visible set shrinks.
+  useEffect(() => {
+    if (idx >= visible.length) setIdx(0)
+  }, [idx, visible.length])
+
+  const markFailed = (src: string) =>
+    setFailed((f) => {
+      const next = new Set(f)
+      next.add(src)
+      return next
+    })
+
+  const hasPhotos = visible.length > 0
 
   return (
     <section className="relative h-48 overflow-hidden rounded-xl sm:h-64">
       {hasPhotos ? (
-        photos.map((src, i) => (
+        visible.map((src, i) => (
           <Image
             key={src}
             src={src}
@@ -34,6 +48,7 @@ export function TeamPhotoHero({ photos, title, subtitle }: TeamPhotoHeroProps) {
             fill
             priority={i === 0}
             sizes="(max-width: 768px) 100vw, 1152px"
+            onError={() => markFailed(src)}
             className={`object-cover transition-opacity duration-1000 ${i === idx ? 'opacity-100' : 'opacity-0'}`}
           />
         ))
@@ -53,11 +68,11 @@ export function TeamPhotoHero({ photos, title, subtitle }: TeamPhotoHeroProps) {
       </div>
 
       {/* Rotation dots */}
-      {photos.length > 1 && (
+      {visible.length > 1 && (
         <div className="absolute right-3 top-3 flex gap-1.5">
-          {photos.map((_, i) => (
+          {visible.map((src, i) => (
             <span
-              key={i}
+              key={src}
               className={`h-1.5 w-1.5 rounded-full ${i === idx ? 'bg-white' : 'bg-white/40'}`}
               aria-hidden
             />

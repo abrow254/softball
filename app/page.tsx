@@ -4,19 +4,12 @@ import { getStandings } from '@/lib/standings'
 import { getCurrentSeason, getSeasonStats, listGames, getBoxScore } from '@/lib/db'
 import { selectPotG, formatPotGLine } from '@/lib/potg'
 import { TeamPhotoHero } from '@/components/TeamPhotoHero'
+import { allPhotoSrcs } from '@/lib/teamPhotos'
 import type { SeasonStatRow } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata = { title: 'The Softball Team' }
-
-// Drop team photos in /public/team and list them here to enable the rotating
-// hero. Until then the hero shows a styled grass-gradient fallback.
-const TEAM_PHOTOS: string[] = [
-  // '/team/team-1.jpg',
-  // '/team/team-2.jpg',
-  // '/team/team-3.jpg',
-]
 
 function shortDate(iso: string): string {
   return new Date(`${iso}T00:00`).toLocaleDateString(undefined, {
@@ -169,11 +162,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-6">
-      <TeamPhotoHero
-        photos={TEAM_PHOTOS}
-        title="The Softball Team"
-        subtitle={standings?.season ?? season?.label ?? null}
-      />
+      <TeamPhotoHero photos={allPhotoSrcs()} subtitle={standings?.season ?? season?.label ?? null} />
 
       {/* Record summary */}
       {played.length > 0 && (

@@ -1,6 +1,8 @@
 import { listSeasons, getCurrentSeason, getSeasonStats } from '@/lib/db'
 import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
+import { SeasonPhotoBanner } from '@/components/SeasonPhotoBanner'
+import { photoForSeason } from '@/lib/teamPhotos'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +28,8 @@ export default async function StatsPage({
     : fallback
 
   const rows = await getSeasonStats(selectedId)
+  const selectedSeason = seasons.find((s) => s.id === selectedId)
+  const photo = selectedSeason ? photoForSeason(selectedSeason.year, selectedSeason.term) : undefined
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
@@ -33,6 +37,8 @@ export default async function StatsPage({
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Season stats</h1>
         <SeasonSelector seasons={seasons} selectedId={selectedId} />
       </div>
+
+      {photo && <SeasonPhotoBanner src={photo.src} caption={photo.caption} />}
 
       <StatsGrid rows={rows} />
 
