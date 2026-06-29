@@ -3,7 +3,8 @@ import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import { SeasonPhotoBanner } from '@/components/SeasonPhotoBanner'
 import { photoForSeason } from '@/lib/teamPhotos'
-import { recordForSeason } from '@/lib/seasonRecords'
+import { SEASON_RECORDS, recordForSeason } from '@/lib/seasonRecords'
+import type { Season } from '@/lib/types'
 
 function RecordTile({ label, value }: { label: string; value: string }) {
   return (
@@ -16,13 +17,30 @@ function RecordTile({ label, value }: { label: string; value: string }) {
 
 export const dynamic = 'force-dynamic'
 
+// Sort newest-first: year desc, then Fall after Summer within a year.
+const termRank = (t: string) => (t === 'Fall' ? 1 : 0)
+const bySeasonDesc = (a: Season, b: Season) =>
+  b.year - a.year || termRank(b.term) - termRank(a.term)
+
 export default async function StatsPage({
   searchParams,
 }: {
   searchParams: { season?: string }
 }) {
+  const dbSeasons = await listSeasons()
 
-  const seasons = await listSeasons()
+  // Merge in seasons that exist only in the records sheet (e.g. 2022, where we
+  // didn't track player stats) so they're selectable with a record + photo.
+  const dbKeys = new Set(dbSeasons.map((s) => `${s.year}-${s.term}`))
+  const registryOnly: Season[] = SEASON_RECORDS.filter((r) => !dbKeys.has(`${r.year}-${r.term}`)).map((r) => ({
+    id: `rec:${r.year}-${r.term}`,
+    year: r.year,
+    term: r.term,
+    label: `${r.year} ${r.term}`,
+    is_current: false,
+    created_at: '',
+  }))
+  const seasons = [...dbSeasons, ...registryOnly].sort(bySeasonDesc)
 
   if (seasons.length === 0) {
     return (
@@ -34,16 +52,20 @@ export default async function StatsPage({
 
   const currentSeason = await getCurrentSeason()
   const fallback = currentSeason?.id ?? seasons[0].id
-  const selectedId = searchParams.season && seasons.some((s) => s.id === searchParams.season)
-    ? searchParams.season
-    : fallback
+  const selectedId =
+    searchParams.season && seasons.some((s) => s.id === searchParams.season) ? searchParams.season : fallback
 
-  const [rows, games] = await Promise.all([getSeasonStats(selectedId), listGames(selectedId)])
   const selectedSeason = seasons.find((s) => s.id === selectedId)
-  const photo = selectedSeason ? photoForSeason(selectedSeason.year, selectedSeason.term) : undefined
+  const isRegistryOnly = selectedId.startsWith('rec:')
   const isCurrent = selectedId === currentSeason?.id
 
-  // Live record from this season's played, non-aggregate games.
+  const photo = selectedSeason ? photoForSeason(selectedSeason.year, selectedSeason.term) : undefined
+
+  // Player stats + live record only for real (DB) seasons.
+  const [rows, games] = isRegistryOnly
+    ? [[], []]
+    : await Promise.all([getSeasonStats(selectedId), listGames(selectedId)])
+
   let w = 0, l = 0, d = 0, rf = 0, ra = 0, gp = 0
   for (const g of games) {
     if (g.is_aggregate || g.our_runs == null || g.opp_runs == null) continue
@@ -55,8 +77,8 @@ export default async function StatsPage({
     else d++
   }
 
-  // Season summary: official record for past seasons, live-from-games for the
-  // current season. (Win % is W / games played, per the records sheet.)
+  // Season summary: official record for past/untracked seasons, live game data
+  // for the current season. (Win % is W / games played, per the records sheet.)
   const reg = selectedSeason ? recordForSeason(selectedSeason.year, selectedSeason.term) : undefined
   const summary =
     reg && !isCurrent
@@ -88,33 +110,49 @@ export default async function StatsPage({
         <SeasonSelector seasons={seasons} selectedId={selectedId} />
       </div>
 
-      {photo && <SeasonPhotoBanner src={photo.src} caption={photo.caption} />}
-
-      {summary && (
-        <section className="space-y-2">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <RecordTile label="Record" value={`${summary.w}-${summary.l}-${summary.d}`} />
-            <RecordTile label="Win %" value={fmtPct(summary.winPct)} />
-            <RecordTile
-              label="Run Diff"
-              value={summary.runDiff > 0 ? `+${summary.runDiff}` : String(summary.runDiff)}
-            />
-            <RecordTile label="Finish" value={summary.finished ?? '—'} />
-          </div>
-          <p className="text-xs text-field-muted">
-            {summary.rsPerG.toFixed(1)} runs/game · {summary.raPerG.toFixed(1)} allowed
-            {summary.rankingPoints != null ? ` · ${summary.rankingPoints} ranking pts` : ''}
-          </p>
+      {/* Photo on one side, record stacked on the other */}
+      {(photo || summary) && (
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          {photo && (
+            <div className="sm:w-1/2 sm:shrink-0">
+              <SeasonPhotoBanner src={photo.src} caption={photo.caption} />
+            </div>
+          )}
+          {summary && (
+            <div className="flex-1">
+              <div className="grid grid-cols-2 gap-2">
+                <RecordTile label="Record" value={`${summary.w}-${summary.l}-${summary.d}`} />
+                <RecordTile label="Win %" value={fmtPct(summary.winPct)} />
+                <RecordTile
+                  label="Run Diff"
+                  value={summary.runDiff > 0 ? `+${summary.runDiff}` : String(summary.runDiff)}
+                />
+                <RecordTile label="Finish" value={summary.finished ?? '—'} />
+              </div>
+              <p className="mt-2 text-xs text-field-muted">
+                {summary.rsPerG.toFixed(1)} runs/game · {summary.raPerG.toFixed(1)} allowed
+                {summary.rankingPoints != null ? ` · ${summary.rankingPoints} ranking pts` : ''}
+              </p>
+            </div>
+          )}
         </section>
       )}
 
-      <StatsGrid rows={rows} />
-
-      <p className="text-xs text-field-muted">
-        Tap a column header to sort, or a name for that player&rsquo;s career.{' '}
-        <span className="rounded bg-field-gold/30 px-1 font-semibold">Gold</span> marks the season leader; when sorting a
-        rate stat, players under 10 AB are dimmed and sorted last. House rules: OBP counts FC and divides by AB; OPS is AVG + SLG.
-      </p>
+      {isRegistryOnly ? (
+        <p className="rounded-lg border border-dashed border-field-line-strong bg-field-paper px-4 py-8 text-center text-sm text-field-muted">
+          Player stats weren&rsquo;t tracked this season — only the team record above.
+        </p>
+      ) : (
+        <>
+          <StatsGrid rows={rows} />
+          <p className="text-xs text-field-muted">
+            Tap a column header to sort, or a name for that player&rsquo;s career.{' '}
+            <span className="rounded bg-field-gold/30 px-1 font-semibold">Gold</span> marks the season leader; when
+            sorting a rate stat, players under 10 AB are dimmed and sorted last. House rules: OBP counts FC and divides
+            by AB; OPS is AVG + SLG.
+          </p>
+        </>
+      )}
     </div>
   )
 }
