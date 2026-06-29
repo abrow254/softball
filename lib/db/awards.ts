@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SeasonStatRow, Season } from '@/lib/types'
 import { fmt3 } from '@/lib/formulas'
+import { qualifiedThreshold } from '@/lib/db/eligibility'
 
 // ---------- Types ------------------------------------------------------------
 
@@ -16,15 +17,6 @@ export interface SeasonAward {
   label: string
   description: string
   winners: AwardWinner[]
-}
-
-// ---------- Eligibility ------------------------------------------------------
-
-// "Qualified" = ab >= max(10, 0.5 × season max AB).
-// Scales with season length so early-season boards don't crown 2-AB players.
-function qualifiedThreshold(rows: SeasonStatRow[]): number {
-  const maxAb = Math.max(...rows.map((r) => r.ab), 0)
-  return Math.max(10, Math.floor(0.5 * maxAb))
 }
 
 // ---------- Award helpers ----------------------------------------------------

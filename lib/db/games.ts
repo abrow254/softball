@@ -22,6 +22,18 @@ export async function getGame(id: string): Promise<Game | null> {
   return data ?? null
 }
 
+// All-time Player-of-the-Game wins for one player (real games only).
+export async function getPlayerPotgCount(playerId: string): Promise<number> {
+  const supabase = createClient()
+  const { count, error } = await supabase
+    .from('games')
+    .select('id', { count: 'exact', head: true })
+    .eq('potg_player_id', playerId)
+    .eq('is_aggregate', false)
+  if (error) throw new Error(error.message)
+  return count ?? 0
+}
+
 // Returns the box score for a real (non-aggregate) game, or null for aggregates.
 // Merges lineup order from the lineups table.
 export async function getBoxScore(gameId: string): Promise<BoxScoreRow[] | null> {

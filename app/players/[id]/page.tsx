@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getPlayerCareer, getPlayerGameLog, getCurrentSeason } from '@/lib/db'
+import { getPlayerCareer, getPlayerGameLog, getCurrentSeason, getPlayerPotgCount, getPlayerBadges } from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
+import { Tile } from '@/components/Tile'
 import { PLAYER_SEASON_COLS } from '@/lib/statColumns'
 import { fmt3, fmtPct } from '@/lib/formulas'
 import type { CareerStatRow, PlayerGameLogEntry, PlayerSeasonRow } from '@/lib/types'
@@ -14,15 +15,6 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 }
 
 // ---------- Tiles (career overview) ------------------------------------------
-
-function Tile({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center" title={title}>
-      <div className="tabular text-xl font-semibold text-field-ink">{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-field-muted">{label}</div>
-    </div>
-  )
-}
 
 function tiles(c: CareerStatRow) {
   return [
@@ -167,11 +159,14 @@ function GameLogTable({ entries }: { entries: PlayerGameLogEntry[] }) {
 export default async function PlayerCareerPage({ params }: { params: { id: string } }) {
   const currentSeason = await getCurrentSeason()
 
-  const [{ career, seasons }, gameLog] = await Promise.all([
+  const [{ career, seasons }, gameLog, potgCount] = await Promise.all([
     getPlayerCareer(params.id),
     currentSeason ? getPlayerGameLog(params.id, currentSeason.id) : Promise.resolve([]),
+    getPlayerPotgCount(params.id),
   ])
   if (!career) notFound()
+
+  const badges = getPlayerBadges(career, potgCount)
 
   return (
     <div className="space-y-8">
@@ -198,6 +193,31 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
           ))}
         </div>
       </section>
+
+      {badges.earned.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Career milestones</h2>
+          <div className="flex flex-wrap gap-2">
+            {badges.earned.map((b) => (
+              <span
+                key={b.label}
+                className="rounded-full border border-field-gold/40 bg-field-gold/15 px-3 py-1 text-sm font-medium text-field-ink"
+              >
+                {b.emoji} {b.label}
+              </span>
+            ))}
+          </div>
+          {badges.next.length > 0 && (
+            <p className="text-xs text-field-muted">
+              Next:{' '}
+              {badges.next
+                .slice(0, 3)
+                .map((n) => `${n.label} (${n.target - n.current} to go)`)
+                .join(' · ')}
+            </p>
+          )}
+        </section>
+      )}
 
       {seasons.length >= 2 && (
         <section>
