@@ -6,7 +6,6 @@ import type { LineupLabPlayer, Season } from '@/lib/types'
 import { LineupLab } from '@/components/LineupLab'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
-import { PrintButton } from '@/components/PrintButton'
 
 const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'Rover', 'BE']
 const FIELD_POSITIONS = new Set(['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'Rover'])
@@ -20,7 +19,6 @@ interface LineupLabCompleteProps {
 }
 
 export function LineupLabComplete({ players, seasons, selectedSeasonId }: LineupLabCompleteProps) {
-  // Optimizer state passed from LineupLab
   const [optimizedOrder, setOptimizedOrder] = useState<string[]>([])
   const [opponent, setOpponent] = useState('')
   const [positions, setPositions] = useState<Map<string, string>>(new Map())
@@ -28,7 +26,6 @@ export function LineupLabComplete({ players, seasons, selectedSeasonId }: Lineup
 
   const playerMap = useMemo(() => new Map(players.map((p) => [p.player_id, p])), [players])
 
-  // Validation summary
   const summary = useMemo(() => {
     const unset = optimizedOrder.filter((id) => !positions.get(id)).length
     const counts = new Map<string, number>()
@@ -73,92 +70,119 @@ export function LineupLabComplete({ players, seasons, selectedSeasonId }: Lineup
 
   return (
     <div className="space-y-6">
-      {/* ---- Lineup Lab Optimizer ---- */}
-      <section>
-        <LineupLab
-          players={players}
-          seasons={seasons}
-          selectedSeasonId={selectedSeasonId}
-          onOrderChange={setOptimizedOrder}
-        />
+      {/* ---- Single unified Lineup Lab section ---- */}
+      <section className="space-y-4 rounded-lg border border-field-line bg-field-paper p-4">
+        {/* Optimizer */}
+        <div className="-mx-4 -my-4 px-4 py-4 border-b border-field-line">
+          <LineupLab
+            players={players}
+            seasons={seasons}
+            selectedSeasonId={selectedSeasonId}
+            onOrderChange={setOptimizedOrder}
+          />
+        </div>
+
+        {!empty && (
+          <>
+            {/* Positions inline */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Assign Starting Positions</h3>
+              <div className="space-y-1.5">
+                {optimizedOrder.map((playerId, idx) => {
+                  const player = playerMap.get(playerId)
+                  if (!player) return null
+
+                  return (
+                    <div key={playerId} className="flex items-center gap-2">
+                      <span className="w-6 text-right font-semibold text-field-grass text-sm">{idx + 1}.</span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-field-ink text-sm">{player.name}</span>
+                      <select
+                        value={positions.get(playerId) || ''}
+                        onChange={(e) => handlePositionChange(playerId, e.target.value)}
+                        className="rounded border border-field-line px-2 py-1 text-xs text-field-ink"
+                      >
+                        <option value="">—</option>
+                        {POSITIONS.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Validation warnings */}
+              {summary.unset > 0 && (
+                <p className="text-xs text-field-muted mt-2">
+                  {summary.unset} {summary.unset === 1 ? 'player' : 'players'} missing position
+                </p>
+              )}
+              {summary.dupes.length > 0 && (
+                <p className="text-xs text-field-clay mt-2">
+                  ⚠️ Duplicate positions: {summary.dupes.join(', ')}
+                </p>
+              )}
+            </div>
+
+            {/* Opponent */}
+            <div className="pt-2 border-t border-field-line">
+              <label className="block text-xs font-semibold text-field-muted uppercase tracking-wide mb-2">
+                Opponent (optional)
+              </label>
+              <input
+                type="text"
+                value={opponent}
+                onChange={(e) => setOpponent(e.target.value)}
+                placeholder="e.g., Hot Mess"
+                className="w-full rounded border border-field-line px-3 py-2 text-sm"
+              />
+            </div>
+          </>
+        )}
       </section>
 
       {!empty && (
         <>
-          {/* ---- Batting Order with inline position assignment ---- */}
+          {/* ---- Preview ---- */}
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Batting Order & Positions</h2>
-            <div className="space-y-1.5">
-              {optimizedOrder.map((playerId, idx) => {
-                const player = playerMap.get(playerId)
-                if (!player) return null
-
-                return (
-                  <div
-                    key={playerId}
-                    className="flex items-center gap-2 rounded-lg border border-field-line bg-field-paper p-3"
-                  >
-                    <span className="w-6 shrink-0 text-right font-semibold text-field-grass">{idx + 1}</span>
-                    <span className="min-w-0 flex-1 truncate font-medium text-field-ink">{player.name}</span>
-                    <select
-                      value={positions.get(playerId) || ''}
-                      onChange={(e) => handlePositionChange(playerId, e.target.value)}
-                      className="rounded border border-field-line px-2 py-1 text-xs text-field-ink"
-                    >
-                      <option value="">—</option>
-                      {POSITIONS.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )
-              })}
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Preview</h2>
+            <div className="rounded-lg border border-field-line bg-field-paper p-4 space-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-field-muted mb-2">Batting Order</p>
+                <ol className="space-y-1">
+                  {lineupRows.map((row) => (
+                    <li key={row.batting_order} className="flex items-center gap-2 text-sm text-field-ink">
+                      <span className="font-semibold text-field-grass w-5">{row.batting_order}.</span>
+                      <span className="flex-1">{row.name}</span>
+                      {row.starting_pos && (
+                        <span className="rounded bg-field-cream px-2 py-0.5 text-xs font-medium text-field-muted">
+                          {row.starting_pos}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </div>
-
-            {/* Validation warnings */}
-            {summary.unset > 0 && (
-              <p className="text-xs text-field-muted">
-                {summary.unset} {summary.unset === 1 ? 'player' : 'players'} missing position
-              </p>
-            )}
-            {summary.dupes.length > 0 && (
-              <p className="text-xs text-field-clay">
-                ⚠️ Duplicate positions: {summary.dupes.join(', ')}
-              </p>
-            )}
           </section>
 
-          {/* ---- Game Info ---- */}
-          <section className="rounded-lg border border-field-line bg-field-paper p-4">
-            <label className="block text-sm font-semibold text-field-ink">
-              Opponent (for printable card)
-            </label>
-            <input
-              type="text"
-              value={opponent}
-              onChange={(e) => setOpponent(e.target.value)}
-              placeholder="e.g., Hot Mess"
-              className="mt-2 w-full rounded border border-field-line px-3 py-2 text-sm"
-            />
-          </section>
-
-          {/* ---- Preview & Export ---- */}
+          {/* ---- Export/Print ---- */}
           <section className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => print('lineup')}
               className="rounded-md bg-field-grass px-4 py-2 font-medium text-white hover:bg-field-grass/90"
             >
-              Print Lineup Card
+              Export Lineup Card
             </button>
             <button
               type="button"
               onClick={() => print('scorecard')}
               className="rounded-md border border-field-line-strong px-4 py-2 font-medium text-field-ink hover:bg-field-cream"
             >
-              Print Scorecard
+              Export Scorecard
             </button>
           </section>
 
@@ -182,29 +206,6 @@ export function LineupLabComplete({ players, seasons, selectedSeasonId }: Lineup
               </div>
             )}
           </div>
-
-          {/* ---- On-Screen Preview ---- */}
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Preview</h2>
-            <div className="rounded-lg border border-field-line bg-field-paper p-4">
-              <p className="mb-3 text-sm font-medium text-field-ink">
-                Batting Order {opponent && `vs ${opponent}`}
-              </p>
-              <ol className="space-y-1 text-sm">
-                {lineupRows.map((row) => (
-                  <li key={row.batting_order} className="flex items-center gap-2 text-field-ink">
-                    <span className="font-semibold text-field-grass">{row.batting_order}.</span>
-                    <span>{row.name}</span>
-                    {row.starting_pos && (
-                      <span className="ml-auto rounded bg-field-cream px-2 py-0.5 text-xs font-medium text-field-muted">
-                        {row.starting_pos}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </section>
         </>
       )}
     </div>

@@ -642,7 +642,7 @@ export function LineupLab({ players, seasons, selectedSeasonId, onOrderChange }:
           {bench.length > 0 && (
             <section>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">
-                Bench · {bench.length}
+                Not playing · {bench.length}
               </h2>
               <ul className="space-y-1.5">
                 {bench.map((playerId) => {
