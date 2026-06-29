@@ -10,16 +10,16 @@ interface NavLink {
 }
 
 const PUBLIC_LINKS: NavLink[] = [
+  { href: '/', label: 'Home' },
+  { href: '/schedule', label: 'Schedule' },
+  { href: '/standings', label: 'Standings' },
   { href: '/stats', label: 'Stats' },
   { href: '/awards', label: 'Awards' },
   { href: '/players', label: 'All-Time' },
-  { href: '/standings', label: 'Standings' },
-  { href: '/schedule', label: 'Schedule' },
 ]
 
 const ADMIN_LINKS: NavLink[] = [
   { href: '/lineup', label: 'Lineup' },
-  { href: '/lineup-lab', label: 'Lab' },
   { href: '/games', label: 'Games' },
 ]
 

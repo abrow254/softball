@@ -26,14 +26,14 @@ export function SignInForm() {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.push('/stats')
+        router.push('/')
         router.refresh()
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
         if (data.session) {
           // Email confirmation is off — signed in immediately.
-          router.push('/stats')
+          router.push('/')
           router.refresh()
         } else {
           setNotice('Account created. Check your email to confirm, then sign in.')

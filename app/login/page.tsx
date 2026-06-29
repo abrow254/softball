@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function LoginPage() {
   const current = await getCurrentUser()
-  if (current) redirect('/stats')
+  if (current) redirect('/')
 
   return (
     <div className="mx-auto max-w-sm py-10">
