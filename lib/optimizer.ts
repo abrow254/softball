@@ -15,6 +15,8 @@
 //            greedily (best player to most-valuable open slot within gender
 //            group); return best across all patterns.
 
+import { FIELDING_POSITIONS } from '@/lib/positions'
+
 export interface SlotConfig {
   role: string
   w: number  // importance weight
@@ -272,4 +274,64 @@ function isCyclicLegal(pattern: number[]): boolean {
       return false
   }
   return true
+}
+
+// ---- Defensive alignment ----------------------------------------------------
+
+// Assign players to the 9 fielding positions, respecting eligibility and using
+// each player's position list as a depth chart (earlier = primary, preferred).
+// Bipartite max-cardinality matching (Kuhn) with candidates visited in
+// depth-chart order so people land at their primary spot when possible. Players
+// left unfilled (more batters than field spots) get 'DH'. A player with an
+// empty position list is treated as eligible for any spot (no preference).
+export function assignPositions(
+  realOrder: string[],
+  eligibilityById: Map<string, string[]>,
+): Map<string, string> {
+  const positions = [...FIELDING_POSITIONS]
+
+  const rank = (pid: string, pos: string): number => {
+    const elig = eligibilityById.get(pid) ?? []
+    if (elig.length === 0) return 0 // unknown → eligible anywhere, no preference
+    const i = elig.indexOf(pos)
+    return i // -1 means not eligible
+  }
+  const eligible = (pid: string, pos: string): boolean => {
+    const elig = eligibilityById.get(pid) ?? []
+    return elig.length === 0 || elig.includes(pos)
+  }
+
+  // Candidates per position, ordered by depth-chart preference (primary first).
+  const candidates = positions.map((pos) =>
+    realOrder
+      .filter((pid) => eligible(pid, pos))
+      .sort((a, b) => rank(a, pos) - rank(b, pos)),
+  )
+
+  // Fill the scarcest positions first to maximize coverage.
+  const posOrder = positions.map((_, i) => i).sort((a, b) => candidates[a].length - candidates[b].length)
+
+  const posMatch = new Map<number, string>()
+  const playerMatch = new Map<string, number>()
+
+  const tryAssign = (posIdx: number, visited: Set<string>): boolean => {
+    for (const pid of candidates[posIdx]) {
+      if (visited.has(pid)) continue
+      visited.add(pid)
+      const cur = playerMatch.get(pid)
+      if (cur === undefined || tryAssign(cur, visited)) {
+        playerMatch.set(pid, posIdx)
+        posMatch.set(posIdx, pid)
+        return true
+      }
+    }
+    return false
+  }
+
+  for (const posIdx of posOrder) tryAssign(posIdx, new Set())
+
+  const result = new Map<string, string>()
+  for (const [posIdx, pid] of posMatch) result.set(pid, positions[posIdx])
+  for (const pid of realOrder) if (!result.has(pid)) result.set(pid, 'DH')
+  return result
 }

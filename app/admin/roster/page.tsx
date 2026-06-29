@@ -19,8 +19,9 @@ export default async function RosterPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Roster</h1>
         <p className="mt-1 text-sm text-field-muted">
-          Set each player&rsquo;s gender (for the MMF lineup rule), active status, and the positions they can field
-          (used by the lineup alignment checker).
+          Set each player&rsquo;s gender (for the MMF lineup rule), active status, and the positions they can field.
+          Tap positions in order of preference (first = primary) &mdash; Auto-optimize uses this depth chart to fill the
+          field.
         </p>
       </div>
       <RosterEditor players={players} />

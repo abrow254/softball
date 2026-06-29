@@ -101,8 +101,13 @@ function PlayerRow({ player }: { player: Player }) {
         </button>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-2 space-y-1">
         <PositionChips selected={positions} onToggle={togglePos} />
+        {positions.length > 0 && (
+          <p className="text-[11px] text-field-muted">
+            Depth chart (primary → backup): <span className="font-medium text-field-ink">{positions.join(' → ')}</span>
+          </p>
+        )}
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ import {
   calcLineupScore,
   getSlotConfigs,
   isFeasible,
+  assignPositions,
 } from '@/lib/optimizer'
 import { fmt3 } from '@/lib/formulas'
 import { LINEUP_POSITIONS as POSITIONS } from '@/lib/positions'
@@ -378,6 +379,14 @@ export function LineupLab({
       setSelectedBenchId(null)
       setOptimizeFlash(true)
       setTimeout(() => setOptimizeFlash(false), 1800)
+
+      // Also auto-assign fielding positions (eligibility + depth-chart order).
+      if (onPositionChange) {
+        const realOrder = result.order.filter((id) => !isPlaceholder(id))
+        const elig = new Map(realOrder.map((id) => [id, playerMap.get(id)?.positions ?? []]))
+        const assigned = assignPositions(realOrder, elig)
+        for (const [pid, pos] of assigned) onPositionChange(pid, pos)
+      }
     }
   }
 
