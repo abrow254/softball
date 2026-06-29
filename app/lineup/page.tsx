@@ -1,8 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listSeasons, getCurrentSeason, getLineupLabData, listGames, getLineup } from '@/lib/db'
+import { listSeasons, getCurrentSeason, getLineupLabData, listGames } from '@/lib/db'
 import { LineupLabComplete } from '@/components/LineupLabComplete'
-import { SeasonSelector } from '@/components/SeasonSelector'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,28 +37,13 @@ export default async function LineupPage({
     listGames(selectedSeasonId),
   ])
 
-  const allLineups = (
-    await Promise.all(allGames.map((g) => getLineup(g.id)))
-  ).flat()
-
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup card</h1>
-        <SeasonSelector seasons={seasons} selectedId={selectedSeasonId} />
-      </div>
-
-      <p className="text-xs text-field-muted">
-        Select an upcoming game, build the batting order with positions, and export. Auto-optimized for the selected game.
-      </p>
-
-      <LineupLabComplete
-        players={players}
-        seasons={seasons}
-        selectedSeasonId={selectedSeasonId}
-        allGames={allGames}
-        allLineups={allLineups}
-      />
-    </div>
+    <LineupLabComplete
+      key={selectedSeasonId}
+      players={players}
+      seasons={seasons}
+      selectedSeasonId={selectedSeasonId}
+      allGames={allGames}
+    />
   )
 }

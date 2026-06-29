@@ -17,6 +17,8 @@ import { fmt3 } from '@/lib/formulas'
 const HOT_RATIO = 1.06
 const COLD_RATIO = 0.94
 
+const POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'Rover', 'BE']
+
 // ---- Placeholder helpers -------------------------------------------------------
 
 const PH_PREFIX = '__placeholder__'
@@ -250,6 +252,13 @@ interface LineupLabProps {
   seasons: Season[]
   selectedSeasonId: string
   onOrderChange?: (order: string[]) => void
+  // When provided, each batting-order row shows an inline position selector.
+  positions?: Map<string, string>
+  onPositionChange?: (playerId: string, pos: string) => void
+  // Embedded mode (used inside the game-setup page): hides the internal
+  // "Lineup Lab" title + season selector and renders a custom header instead.
+  embedded?: boolean
+  header?: React.ReactNode
 }
 
 function initialState(players: LineupLabPlayer[]) {
@@ -279,7 +288,16 @@ function initialState(players: LineupLabPlayer[]) {
   return { order: orderIds, bench: initialBenchIds }
 }
 
-export function LineupLab({ players, seasons, selectedSeasonId, onOrderChange }: LineupLabProps) {
+export function LineupLab({
+  players,
+  seasons,
+  selectedSeasonId,
+  onOrderChange,
+  positions,
+  onPositionChange,
+  embedded = false,
+  header,
+}: LineupLabProps) {
   const [{ order, bench }, setState] = useState(() => initialState(players))
   const [selectedBenchId, setSelectedBenchId] = useState<string | null>(null)
   const [optimizeFlash, setOptimizeFlash] = useState(false)
@@ -417,13 +435,17 @@ export function LineupLab({ players, seasons, selectedSeasonId, onOrderChange }:
 
   return (
     <div className="space-y-5 pb-8">
-      {/* Season selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-field-ink">
-          Lineup Lab
-        </h1>
-        <SeasonSelector seasons={seasons} selectedId={selectedSeasonId} basePath="/lineup-lab" />
-      </div>
+      {/* Header — internal title+selector, or a custom one in embedded mode */}
+      {embedded ? (
+        header ?? null
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-field-ink">
+            Lineup Lab
+          </h1>
+          <SeasonSelector seasons={seasons} selectedId={selectedSeasonId} basePath="/lineup-lab" />
+        </div>
+      )}
 
       {players.length === 0 ? (
         <p className="rounded-lg border border-dashed border-field-line-strong bg-field-paper px-4 py-8 text-center text-sm text-field-muted">
@@ -594,6 +616,22 @@ export function LineupLab({ players, seasons, selectedSeasonId, onOrderChange }:
                         </span>
                         <GenderMark gender={player.gender} />
                         <FormBadge tag={tag} />
+                        {onPositionChange && (
+                          <select
+                            value={positions?.get(playerId) || ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => onPositionChange(playerId, e.target.value)}
+                            className="ml-1 shrink-0 rounded border border-field-line px-1.5 py-1 text-xs text-field-ink"
+                            aria-label={`Position for ${player.name}`}
+                          >
+                            <option value="">Pos</option>
+                            {POSITIONS.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                         <div
                           className="ml-1 flex shrink-0 items-center gap-0.5"
                           onClick={(e) => e.stopPropagation()}
