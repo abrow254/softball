@@ -120,29 +120,6 @@ export function LineupLabComplete({
 
       {order.length > 0 && (
         <>
-          {/* ---- Preview ---- */}
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Preview</h2>
-            <div className="rounded-lg border border-field-line bg-field-paper p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-field-muted">
-                {cardTitle}
-              </p>
-              <ol className="space-y-1">
-                {lineupRows.map((row) => (
-                  <li key={row.batting_order} className="flex items-center gap-2 text-sm text-field-ink">
-                    <span className="w-5 font-semibold text-field-grass">{row.batting_order}.</span>
-                    <span className="flex-1">{row.name}</span>
-                    {row.starting_pos && (
-                      <span className="rounded bg-field-cream px-2 py-0.5 text-xs font-medium text-field-muted">
-                        {row.starting_pos}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </section>
-
           {/* ---- Export ---- */}
           <section className="flex flex-wrap items-center gap-3">
             <button

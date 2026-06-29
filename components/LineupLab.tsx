@@ -515,6 +515,15 @@ export function LineupLab({
             </p>
           )}
 
+          {/* ---- The Read ---- */}
+          <TheRead
+            order={order}
+            playerMap={playerMap}
+            violations={violations}
+            males={males}
+            nonMales={nonMales}
+          />
+
           {/* ---- Batting order card ---- */}
           <section>
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">
@@ -737,15 +746,6 @@ export function LineupLab({
               )}
             </section>
           )}
-
-          {/* ---- The Read ---- */}
-          <TheRead
-            order={order}
-            playerMap={playerMap}
-            violations={violations}
-            males={males}
-            nonMales={nonMales}
-          />
 
           {/* ---- Slot-value explainer ---- */}
           <section className="rounded-lg border border-field-line bg-field-paper p-4">
