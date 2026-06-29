@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { getGame, getLineup, listPlayers } from '@/lib/db'
-import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
-import { PrintButton } from '@/components/PrintButton'
+import { getGame, getBoxScore } from '@/lib/db'
+import { BoxScore } from '@/components/BoxScore'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,43 +13,46 @@ export default async function GameCardPage({ params }: { params: { id: string } 
   const game = await getGame(params.id)
   if (!game) notFound()
 
-  const [lineup, players] = await Promise.all([getLineup(game.id), listPlayers()])
-  const nameById = new Map(players.map((p) => [p.id, p.name]))
-
-  const rows: PrintableCardRow[] = lineup.map((l) => ({
-    batting_order: l.batting_order,
-    name: nameById.get(l.player_id) ?? '',
-    starting_pos: l.starting_pos,
-  }))
+  const boxScore = await getBoxScore(game.id)
 
   return (
-    <div className="space-y-4">
-      <div className="no-print flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Printable card</h1>
-        <div className="flex items-center gap-3">
-          <PrintButton />
-          {current.role === 'admin' && (
-            <Link
-              href={`/games/${game.id}/edit`}
-              className="rounded-md border border-field-line-strong px-4 py-2 font-medium text-field-ink hover:bg-field-cream"
-            >
-              Edit game
-            </Link>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-field-ink">
+            {game.opponent ? `vs ${game.opponent}` : 'Game card'}
+          </h1>
+          {game.game_date && (
+            <p className="mt-1 text-sm text-field-muted">{game.game_date}</p>
           )}
         </div>
+        {current.role === 'admin' && (
+          <Link
+            href={`/games/${game.id}/edit`}
+            className="rounded-md border border-field-line-strong px-4 py-2 font-medium text-field-ink hover:bg-field-cream"
+          >
+            Edit game
+          </Link>
+        )}
       </div>
 
-      <p className="no-print text-sm text-field-muted">
-        Print blank to score by hand, then photograph the filled card and upload it back on the game&apos;s edit page.
-      </p>
-
-      <div className="rounded-lg border border-field-line bg-field-paper p-5 shadow-sm">
-        <PrintableCard
-          title={game.opponent ? `v. ${game.opponent}` : 'The Softball Team'}
-          opponent={game.opponent}
-          rows={rows}
-        />
-      </div>
+      {boxScore && boxScore.length > 0 ? (
+        <>
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Box Score</h2>
+            <BoxScore rows={boxScore} opponent={game.opponent} />
+          </section>
+        </>
+      ) : (
+        <p className="rounded-lg border border-dashed border-field-line bg-field-paper px-4 py-8 text-center text-sm text-field-muted">
+          No stats recorded yet.{' '}
+          {current.role === 'admin' && (
+            <Link href={`/games/${game.id}/edit`} className="text-field-grass hover:underline">
+              Add stats
+            </Link>
+          )}
+        </p>
+      )}
     </div>
   )
 }

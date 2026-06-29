@@ -91,7 +91,7 @@ export function selectPotG(lines: PotGLine[]): PotGResult {
   }
 }
 
-// Short one-line performance summary: "2-for-3, HR, 3 TB, 2 RBI"
+// Short one-line performance summary: "2-for-3, HR, 3 TB"
 export function formatPotGLine(line: Omit<PotGLine, 'player_id' | 'name'>): string {
   const h = line.singles + line.doubles + line.triples + line.hr
   const tb = line.singles + 2 * line.doubles + 3 * line.triples + 4 * line.hr
@@ -100,6 +100,5 @@ export function formatPotGLine(line: Omit<PotGLine, 'player_id' | 'name'>): stri
   else if (line.triples > 0) parts.push(line.triples > 1 ? `${line.triples} 3B` : '3B')
   else if (line.doubles > 0) parts.push(line.doubles > 1 ? `${line.doubles} 2B` : '2B')
   if (tb > 0) parts.push(`${tb} TB`)
-  if (line.rbi > 0) parts.push(`${line.rbi} RBI`)
   return parts.join(', ')
 }
