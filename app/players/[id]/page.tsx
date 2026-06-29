@@ -1,6 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getPlayerCareer, getPlayerGameLog, getCurrentSeason, getPlayerPotgCount, getPlayerBadges } from '@/lib/db'
+import {
+  getPlayerCareer,
+  getPlayerGameLog,
+  getCurrentSeason,
+  getPlayerPotgCount,
+  getPlayerBadges,
+  getBattingOrderStats,
+} from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
 import { Tile } from '@/components/Tile'
 import { OpsChart } from '@/components/OpsChart'
@@ -89,10 +96,11 @@ function GameLogTable({ entries }: { entries: PlayerGameLogEntry[] }) {
 export default async function PlayerCareerPage({ params }: { params: { id: string } }) {
   const currentSeason = await getCurrentSeason()
 
-  const [{ career, seasons }, gameLog, potgCount] = await Promise.all([
+  const [{ career, seasons }, gameLog, potgCount, byOrder] = await Promise.all([
     getPlayerCareer(params.id),
     currentSeason ? getPlayerGameLog(params.id, currentSeason.id) : Promise.resolve([]),
     getPlayerPotgCount(params.id),
+    getBattingOrderStats(params.id),
   ])
   if (!career) notFound()
 
@@ -167,6 +175,41 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
           emptyMessage="No seasons recorded."
         />
       </section>
+
+      {byOrder.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">By batting order</h2>
+          <div className="overflow-x-auto rounded-lg border border-field-line">
+            <table className="min-w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-field-cream/70 text-field-muted">
+                  <th className="px-3 py-2 text-left font-medium">Spot</th>
+                  <th className="px-2 py-2 text-right font-medium">G</th>
+                  <th className="px-2 py-2 text-right font-medium">AB</th>
+                  <th className="px-2 py-2 text-right font-medium">H</th>
+                  <th className="px-2 py-2 text-right font-medium">HR</th>
+                  <th className="px-2 py-2 text-right font-medium">AVG</th>
+                  <th className="px-2 py-2 text-right font-medium">OPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byOrder.map((r) => (
+                  <tr key={r.batting_order} className="border-t border-field-line even:bg-field-cream/30">
+                    <td className="px-3 py-1.5 font-medium text-field-ink">#{r.batting_order}</td>
+                    <td className="px-2 py-1.5 text-right tabular text-field-muted">{r.gp_count}</td>
+                    <td className="px-2 py-1.5 text-right tabular text-field-ink">{r.ab}</td>
+                    <td className="px-2 py-1.5 text-right tabular text-field-ink">{r.hits}</td>
+                    <td className="px-2 py-1.5 text-right tabular text-field-ink">{r.hr}</td>
+                    <td className="px-2 py-1.5 text-right tabular text-field-ink">{fmt3(r.avg)}</td>
+                    <td className="px-2 py-1.5 text-right tabular font-medium text-field-ink">{fmt3(r.ops)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-field-muted">From games entered with a saved lineup; small samples vary.</p>
+        </section>
+      )}
 
       {currentSeason && (
         <section className="space-y-2">

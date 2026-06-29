@@ -6,8 +6,10 @@ import type { LineupLabPlayer, Season } from '@/lib/types'
 import type { OppAnalysis } from '@/lib/opponentScouting'
 import { LineupLab } from '@/components/LineupLab'
 import { OpponentScouting } from '@/components/OpponentScouting'
+import { AlignmentBuilder } from '@/components/AlignmentBuilder'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
+import { calcLineupScore, getSlotConfigs } from '@/lib/optimizer'
 
 type CardTarget = 'lineup' | 'scorecard'
 
@@ -46,6 +48,7 @@ export function LineupLabComplete({
   const [order, setOrder] = useState<string[]>([])
   const [positions, setPositions] = useState<Map<string, string>>(new Map())
   const [target, setTarget] = useState<CardTarget>('lineup')
+  const [pinnedB, setPinnedB] = useState<{ score: number; n: number } | null>(null)
 
   const selectedMatch = upcomingMatches.find((m) => m.date === selectedDate) ?? null
   const playerMap = useMemo(() => new Map(players.map((p) => [p.player_id, p])), [players])
@@ -63,6 +66,27 @@ export function LineupLabComplete({
     flushSync(() => setTarget(which))
     window.print()
   }
+
+  // Current lineup score (slot-value model) for the live order.
+  const currentScore = useMemo(() => {
+    if (order.length === 0) return 0
+    const slots = getSlotConfigs(order.length)
+    return calcLineupScore(
+      order.map((id) => ({ obp: playerMap.get(id)?.obp ?? 0, slg: playerMap.get(id)?.slg ?? 0 })),
+      slots,
+    )
+  }, [order, playerMap])
+
+  // Defensive alignment entries (batting order + assigned position + eligibility).
+  const alignmentEntries = useMemo(
+    () =>
+      order.map((id) => ({
+        name: playerMap.get(id)?.name ?? 'Unknown',
+        pos: positions.get(id) || '',
+        eligible: playerMap.get(id)?.positions ?? [],
+      })),
+    [order, positions, playerMap],
+  )
 
   const cardTitle = selectedMatch?.opponent ? `v. ${selectedMatch.opponent}` : 'The Softball Team'
 
@@ -143,6 +167,57 @@ export function LineupLabComplete({
 
       {order.length > 0 && (
         <>
+          {/* ---- Lineup score + A/B what-if ---- */}
+          <section className="rounded-lg border border-field-line bg-field-paper p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-sm font-semibold uppercase tracking-wide text-field-muted">Lineup score</span>
+                <span className="ml-2 tabular text-lg font-semibold text-field-ink">{currentScore.toFixed(3)}</span>
+                {pinnedB && (
+                  <span
+                    className={`ml-2 text-sm font-medium ${
+                      currentScore > pinnedB.score
+                        ? 'text-field-grass'
+                        : currentScore < pinnedB.score
+                          ? 'text-field-clay'
+                          : 'text-field-muted'
+                    }`}
+                  >
+                    {currentScore >= pinnedB.score ? '+' : ''}
+                    {(currentScore - pinnedB.score).toFixed(3)} vs B ({pinnedB.score.toFixed(3)})
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPinnedB({ score: currentScore, n: order.length })}
+                  className="rounded-md border border-field-line-strong px-3 py-1.5 text-xs font-medium text-field-ink hover:bg-field-cream"
+                >
+                  Pin as B
+                </button>
+                {pinnedB && (
+                  <button
+                    type="button"
+                    onClick={() => setPinnedB(null)}
+                    className="rounded-md px-3 py-1.5 text-xs font-medium text-field-muted hover:bg-field-cream"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-field-muted">
+              Slot-weighted on-base + slugging. Pin a lineup as B, rearrange, and compare — higher is better.
+            </p>
+          </section>
+
+          {/* ---- Defensive alignment ---- */}
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Defensive alignment</h2>
+            <AlignmentBuilder entries={alignmentEntries} />
+          </section>
+
           {/* ---- Export ---- */}
           <section className="flex flex-wrap items-center gap-3">
             <button

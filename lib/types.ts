@@ -217,6 +217,7 @@ export interface LineupLabPlayer {
   player_id: string
   name: string
   gender: Gender | null
+  positions: string[]
   is_regular: boolean
   avg: number
   obp: number
@@ -224,6 +225,33 @@ export interface LineupLabPlayer {
   ops: number
   form: number[]      // last-6 game balanced-form values (0.5·OBP+0.5·SLG), oldest-first
   recentForm: number  // mean balanced-form of last-3 games; 0 if fewer than 1 game
+}
+
+// One player's aggregated line at a given batting-order spot, from batting_order_stats.
+export interface BattingOrderRow {
+  season_id: string
+  player_id: string
+  name: string
+  batting_order: number
+  gp_count: number
+  singles: number
+  doubles: number
+  triples: number
+  hr: number
+  ab: number
+  fc: number
+  bb: number
+  hbp: number
+  roe: number
+  rbi: number
+  runs: number
+  k: number
+  hits: number
+  tb: number
+  avg: number
+  obp: number
+  slg: number
+  ops: number
 }
 
 export function gameResult(our: number | null, opp: number | null): GameResult {

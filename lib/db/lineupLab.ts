@@ -27,12 +27,15 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
   const playerIds = stats.map((s) => s.player_id)
   const { data: players, error: playersErr } = await supabase
     .from('players')
-    .select('id, gender')
+    .select('id, gender, positions')
     .in('id', playerIds)
   if (playersErr) throw new Error(playersErr.message)
 
   const genderById = new Map<string, 'M' | 'F' | null>(
     (players ?? []).map((p) => [p.id, (p.gender as 'M' | 'F') ?? null]),
+  )
+  const positionsById = new Map<string, string[]>(
+    (players ?? []).map((p) => [p.id, (p.positions as string[]) ?? []]),
   )
 
   // Group a per-game "balanced form" value by player (sorted oldest-first).
@@ -62,6 +65,7 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
       player_id: s.player_id,
       name: s.name,
       gender: genderById.get(s.player_id) ?? null,
+      positions: positionsById.get(s.player_id) ?? [],
       is_regular: s.is_regular,
       avg: Number(s.avg),
       obp: Number(s.obp),
