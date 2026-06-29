@@ -3,9 +3,10 @@ import { notFound } from 'next/navigation'
 import { getPlayerCareer, getPlayerGameLog, getCurrentSeason, getPlayerPotgCount, getPlayerBadges } from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
 import { Tile } from '@/components/Tile'
+import { OpsChart } from '@/components/OpsChart'
 import { PLAYER_SEASON_COLS } from '@/lib/statColumns'
 import { fmt3, fmtPct } from '@/lib/formulas'
-import type { CareerStatRow, PlayerGameLogEntry, PlayerSeasonRow } from '@/lib/types'
+import type { CareerStatRow, PlayerGameLogEntry } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,77 +30,6 @@ function tiles(c: CareerStatRow) {
   ]
 }
 
-// ---------- OPS-by-season SVG chart ------------------------------------------
-
-function OpsChart({ seasons }: { seasons: PlayerSeasonRow[] }) {
-  if (seasons.length < 2) return null
-
-  const ops = seasons.map((s) => Number(s.ops))
-  const minOps = Math.max(0, Math.min(...ops) - 0.1)
-  const maxOps = Math.max(...ops) + 0.05
-  const range = maxOps - minOps || 0.01
-
-  const W = 600
-  const H = 120
-  const PAD = { top: 16, right: 20, bottom: 28, left: 36 }
-  const chartW = W - PAD.left - PAD.right
-  const chartH = H - PAD.top - PAD.bottom
-
-  const xs = seasons.map((_, i) => PAD.left + (i / (seasons.length - 1)) * chartW)
-  const ys = ops.map((v) => PAD.top + chartH - ((v - minOps) / range) * chartH)
-
-  const polyline = xs.map((x, i) => `${x},${ys[i]}`).join(' ')
-
-  return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-xl" aria-label="OPS by season">
-        {/* Y-axis ticks */}
-        {[0, 0.5, 1].map((t) => {
-          const y = PAD.top + chartH - t * chartH
-          const label = fmt3(minOps + t * range)
-          return (
-            <g key={t}>
-              <line x1={PAD.left} y1={y} x2={PAD.left + chartW} y2={y} stroke="currentColor" strokeOpacity={0.1} />
-              <text x={PAD.left - 4} y={y + 4} textAnchor="end" fontSize={9} fill="currentColor" fillOpacity={0.5}>
-                {label}
-              </text>
-            </g>
-          )
-        })}
-
-        {/* Line */}
-        <polyline points={polyline} fill="none" stroke="#2F6B4A" strokeWidth={2} strokeLinejoin="round" />
-
-        {/* Points + labels */}
-        {seasons.map((s, i) => (
-          <g key={s.season_id}>
-            <circle cx={xs[i]} cy={ys[i]} r={4} fill="#2F6B4A" />
-            <text
-              x={xs[i]}
-              y={H - 4}
-              textAnchor="middle"
-              fontSize={9}
-              fill="currentColor"
-              fillOpacity={0.55}
-            >
-              {s.season_label}
-            </text>
-            <text
-              x={xs[i]}
-              y={ys[i] - 8}
-              textAnchor="middle"
-              fontSize={9}
-              fill="#2F6B4A"
-              fontWeight="600"
-            >
-              {fmt3(Number(s.ops))}
-            </text>
-          </g>
-        ))}
-      </svg>
-    </div>
-  )
-}
 
 // ---------- Game log ---------------------------------------------------------
 
@@ -222,7 +152,7 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
       {seasons.length >= 2 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-field-muted">OPS by season</h2>
-          <OpsChart seasons={seasons} />
+          <OpsChart series={[{ label: career.name, color: '#2F6B4A', seasons }]} />
         </section>
       )}
 
