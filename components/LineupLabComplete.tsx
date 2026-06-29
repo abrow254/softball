@@ -148,8 +148,8 @@ export function LineupLabComplete({
             {target === 'scorecard' && (
               <div className="rounded-lg border border-field-line bg-field-paper p-5 shadow-sm">
                 <PrintableCard
-                  title={cardTitle}
                   opponent={selectedGame?.opponent ?? null}
+                  date={selectedGame?.game_date ?? null}
                   rows={scorecardRows}
                 />
               </div>

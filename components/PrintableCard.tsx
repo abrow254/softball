@@ -16,12 +16,12 @@ const MIN_ROWS = 13 // fill out to a full lineup so the blank card is reusable
 // Tuned to fit a single letter-portrait page: compact rows, small type, and a
 // capped row count keep the whole sheet on one sheet of paper.
 export function PrintableCard({
-  title,
   opponent,
+  date,
   rows,
 }: {
-  title: string
   opponent: string | null
+  date?: string | null
   rows: PrintableCardRow[]
 }) {
   // Pad with blank rows so the printed card has room for write-ins / subs.
@@ -32,12 +32,24 @@ export function PrintableCard({
     padded.push({ batting_order: order, name: '', starting_pos: '' })
   }
 
+  const prettyDate = date
+    ? new Date(`${date}T00:00`).toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null
+
   return (
     <div className="print-card text-field-ink">
       {/* Header */}
-      <h1 className="mb-2 border-b-2 border-field-ink pb-1 text-center font-display text-xl font-bold uppercase tracking-wide">
-        {title}
-      </h1>
+      <div className="mb-2 border-b-2 border-field-ink pb-1 text-center">
+        <h1 className="font-display text-xl font-bold uppercase tracking-wide">
+          The Softball Team vs. {opponent || '__________'}
+        </h1>
+        {prettyDate && <p className="text-sm font-medium text-field-muted">{prettyDate}</p>}
+      </div>
 
       {/* Runs / outs by inning — our line and the opponent's, each with outs */}
       <table className="mb-3 w-full table-fixed border-collapse text-center text-xs">

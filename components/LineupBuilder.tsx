@@ -473,7 +473,7 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [], upcom
             {target === 'lineup' ? (
               <BattingLineupCard title={title} rows={lineupRows} />
             ) : (
-              <PrintableCard title={title} opponent={opponent || null} rows={scorecardRows} />
+              <PrintableCard opponent={opponent || null} date={gameDate || null} rows={scorecardRows} />
             )}
           </div>
         )}
@@ -484,7 +484,7 @@ export function LineupBuilder({ players: initialPlayers, defaultRows = [], upcom
         <BattingLineupCard title={title} rows={lineupRows} />
       </div>
       <div className={`hidden ${target === 'scorecard' ? 'print:block' : 'print:hidden'}`} aria-hidden>
-        <PrintableCard title={title} opponent={opponent || null} rows={scorecardRows} />
+        <PrintableCard opponent={opponent || null} date={gameDate || null} rows={scorecardRows} />
       </div>
 
       {/* ---- Sticky print bar (no-print) ---- */}
