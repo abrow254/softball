@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listSeasons, getCurrentSeason, getLineupLabData } from '@/lib/db'
+import { listSeasons, getCurrentSeason, getLineupLabData, listGames, getLineup } from '@/lib/db'
 import { LineupLabComplete } from '@/components/LineupLabComplete'
 import { SeasonSelector } from '@/components/SeasonSelector'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata = { title: 'Lineup Optimizer — The Softball Team' }
+export const metadata = { title: 'Lineup Card — The Softball Team' }
 
 export default async function LineupPage({
   searchParams,
@@ -21,7 +21,7 @@ export default async function LineupPage({
   if (seasons.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup optimizer</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup card</h1>
         <p className="rounded-lg border border-dashed border-field-line-strong bg-field-paper px-4 py-8 text-center text-field-muted">
           No seasons yet.
         </p>
@@ -33,22 +33,32 @@ export default async function LineupPage({
   const selectedSeasonId =
     searchParams.season && seasons.some((s) => s.id === searchParams.season) ? searchParams.season : fallback
 
-  const players = await getLineupLabData(selectedSeasonId)
+  const [players, allGames] = await Promise.all([
+    getLineupLabData(selectedSeasonId),
+    listGames(selectedSeasonId),
+  ])
+
+  const allLineups = (
+    await Promise.all(allGames.map((g) => getLineup(g.id)))
+  ).flat()
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup optimizer</h1>
-          <p className="mt-1 text-sm text-field-muted">Optimize batting order, assign positions, and print cards</p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Lineup card</h1>
         <SeasonSelector seasons={seasons} selectedId={selectedSeasonId} />
       </div>
+
+      <p className="text-xs text-field-muted">
+        Select an upcoming game, build the batting order with positions, and export. Auto-optimized for the selected game.
+      </p>
 
       <LineupLabComplete
         players={players}
         seasons={seasons}
         selectedSeasonId={selectedSeasonId}
+        allGames={allGames}
+        allLineups={allLineups}
       />
     </div>
   )
