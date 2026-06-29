@@ -13,7 +13,7 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
       .eq('season_id', seasonId),
     supabase
       .from('player_game_log')
-      .select('player_id, game_date, ops')
+      .select('player_id, game_date, hits, fc, ab, slg')
       .eq('season_id', seasonId)
       .order('game_date', { ascending: true }),
   ])
@@ -35,12 +35,20 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
     (players ?? []).map((p) => [p.id, (p.gender as 'M' | 'F') ?? null]),
   )
 
-  // Group per-game OPS by player (already sorted oldest-first by game_date).
+  // Group a per-game "balanced form" value by player (sorted oldest-first).
+  // Form is half on-base, half slugging: 0.5·OBP + 0.5·SLG, using the house
+  // OBP = (hits + fc) / ab (counts reaching on FC, matching season_stats).
+  // This credits getting on base, not just power, so contact hitters' streaks
+  // register the same as sluggers' — measured against each player's own norm.
   const logsByPlayer = new Map<string, number[]>()
   for (const log of logsResult.data ?? []) {
     const pid = log.player_id
+    const ab = Number(log.ab)
+    const obp = ab > 0 ? (Number(log.hits) + Number(log.fc)) / ab : 0
+    const slg = Number(log.slg)
+    const balanced = 0.5 * obp + 0.5 * slg
     if (!logsByPlayer.has(pid)) logsByPlayer.set(pid, [])
-    logsByPlayer.get(pid)!.push(Number(log.ops))
+    logsByPlayer.get(pid)!.push(balanced)
   }
 
   return stats.map((s) => {

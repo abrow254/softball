@@ -220,8 +220,8 @@ export interface LineupLabPlayer {
   obp: number
   slg: number
   ops: number
-  form: number[]      // last-6 game OPS values, oldest-first
-  recentForm: number  // mean OPS of last-3 games; 0 if fewer than 1 game
+  form: number[]      // last-6 game balanced-form values (0.5·OBP+0.5·SLG), oldest-first
+  recentForm: number  // mean balanced-form of last-3 games; 0 if fewer than 1 game
 }
 
 export function gameResult(our: number | null, opp: number | null): GameResult {

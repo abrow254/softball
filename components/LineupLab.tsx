@@ -79,10 +79,16 @@ function Sparkline({ values }: { values: number[] }) {
 
 type FormTag = 'Hot' | 'Cold' | 'Steady'
 
-function getFormTag(recentForm: number, seasonOps: number): FormTag {
-  if (seasonOps === 0) return 'Steady'
-  if (recentForm > seasonOps * HOT_RATIO) return 'Hot'
-  if (recentForm < seasonOps * COLD_RATIO) return 'Cold'
+// Each player's season "balanced form" baseline: half on-base, half slugging.
+// Matches the per-game form metric so Hot/Cold compares like with like.
+function seasonForm(player: LineupLabPlayer): number {
+  return 0.5 * player.obp + 0.5 * player.slg
+}
+
+function getFormTag(recentForm: number, seasonBaseline: number): FormTag {
+  if (seasonBaseline === 0) return 'Steady'
+  if (recentForm > seasonBaseline * HOT_RATIO) return 'Hot'
+  if (recentForm < seasonBaseline * COLD_RATIO) return 'Cold'
   return 'Steady'
 }
 
@@ -184,13 +190,15 @@ function TheRead({
     )
   }
 
-  // Heating up
+  // Heating up — compared to the player's own season form baseline
+  // (balanced on-base + slugging), not raw OPS.
   for (const id of order) {
     const p = playerMap.get(id)
     if (!p || p.form.length < 3) continue
-    if (p.recentForm - p.ops > 0.04) {
+    const base = seasonForm(p)
+    if (p.recentForm - base > 0.04) {
       sentences.push(
-        `${p.name} is heating up — last-3 OPS ${fmt3(p.recentForm)} vs ${fmt3(p.ops)} season average.`,
+        `${p.name} is heating up — last-3 form ${fmt3(p.recentForm)} vs ${fmt3(base)} season average.`,
       )
       break
     }
@@ -200,9 +208,10 @@ function TheRead({
   for (const id of order) {
     const p = playerMap.get(id)
     if (!p || p.form.length < 3) continue
-    if (p.ops - p.recentForm > 0.04) {
+    const base = seasonForm(p)
+    if (base - p.recentForm > 0.04) {
       sentences.push(
-        `${p.name} has cooled off (${fmt3(p.recentForm)} recent vs ${fmt3(p.ops)} season) — consider dropping a spot.`,
+        `${p.name} has cooled off (${fmt3(p.recentForm)} recent vs ${fmt3(base)} season) — consider dropping a spot.`,
       )
       break
     }
@@ -591,7 +600,7 @@ export function LineupLab({
                 // ---- Real player slot ----
                 const player = playerMap.get(playerId)
                 if (!player) return null
-                const tag = getFormTag(player.recentForm, player.ops)
+                const tag = getFormTag(player.recentForm, seasonForm(player))
 
                 return (
                   <li
@@ -695,7 +704,7 @@ export function LineupLab({
                 {bench.map((playerId) => {
                   const player = playerMap.get(playerId)
                   if (!player) return null
-                  const tag = getFormTag(player.recentForm, player.ops)
+                  const tag = getFormTag(player.recentForm, seasonForm(player))
                   const isSelected = selectedBenchId === playerId
 
                   return (
