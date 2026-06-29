@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
-import type { LineupLabPlayer, Season } from '@/lib/types'
+import type { LineupLabPlayer, Season, AvailabilityStatus } from '@/lib/types'
 import type { OppAnalysis } from '@/lib/opponentScouting'
 import { LineupLab } from '@/components/LineupLab'
 import { OpponentScouting } from '@/components/OpponentScouting'
@@ -10,6 +10,7 @@ import { AlignmentBuilder } from '@/components/AlignmentBuilder'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
 import { calcLineupScore, getSlotConfigs } from '@/lib/optimizer'
+import { setAvailabilityAction } from '@/app/lineup/actions'
 
 type CardTarget = 'lineup' | 'scorecard'
 
@@ -27,6 +28,8 @@ interface LineupLabCompleteProps {
   seasons: Season[]
   selectedSeasonId: string
   upcomingMatches: UpcomingMatch[]
+  // Availability by game date: playerId -> status. Seeds the RSVP toggles.
+  availabilityByDate: Record<string, { player_id: string; status: AvailabilityStatus }[]>
 }
 
 function prettyDate(iso: string): string {
@@ -42,6 +45,7 @@ export function LineupLabComplete({
   seasons,
   selectedSeasonId,
   upcomingMatches,
+  availabilityByDate,
 }: LineupLabCompleteProps) {
   // Auto-select the next game (earliest upcoming) on load.
   const [selectedDate, setSelectedDate] = useState<string>(() => upcomingMatches[0]?.date ?? '')
@@ -50,8 +54,39 @@ export function LineupLabComplete({
   const [target, setTarget] = useState<CardTarget>('lineup')
   const [pinnedB, setPinnedB] = useState<{ score: number; n: number } | null>(null)
 
+  // RSVP availability for the selected date: playerId -> status. Seeded from the
+  // server, edited optimistically as toggles are clicked.
+  const [availability, setAvailability] = useState<Map<string, AvailabilityStatus>>(new Map())
+  useEffect(() => {
+    const rows = availabilityByDate[selectedDate] ?? []
+    setAvailability(new Map(rows.map((r) => [r.player_id, r.status])))
+  }, [selectedDate, availabilityByDate])
+
   const selectedMatch = upcomingMatches.find((m) => m.date === selectedDate) ?? null
   const playerMap = useMemo(() => new Map(players.map((p) => [p.player_id, p])), [players])
+
+  // Players the optimizer should consider: everyone not explicitly marked "out".
+  const availablePlayers = useMemo(
+    () => players.filter((p) => availability.get(p.player_id) !== 'out'),
+    [players, availability],
+  )
+  // Re-key the optimizer so it re-optimizes over the available set when the game
+  // or availability changes.
+  const labKey = `${selectedDate}|${availablePlayers.map((p) => p.player_id).sort().join(',')}`
+
+  async function toggleAvailability(playerId: string, status: AvailabilityStatus) {
+    if (!selectedDate) return
+    setAvailability((prev) => {
+      const next = new Map(prev)
+      next.set(playerId, status)
+      return next
+    })
+    try {
+      await setAvailabilityAction(selectedSeasonId, selectedDate, playerId, status)
+    } catch {
+      // best-effort; the optimistic state stays
+    }
+  }
 
   function handlePositionChange(playerId: string, pos: string) {
     setPositions((prev) => {
@@ -147,22 +182,65 @@ export function LineupLabComplete({
           )}
         </div>
       )}
+
+      {/* Availability / RSVP — players marked "out" are dropped from the optimizer */}
+      {selectedMatch && (
+        <details className="rounded-lg border border-field-line bg-field-paper p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-field-ink">
+            Availability · {availablePlayers.length} in
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {players.map((p) => {
+              const status = availability.get(p.player_id) ?? 'in'
+              return (
+                <li key={p.player_id} className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm text-field-ink">{p.name}</span>
+                  <div className="flex shrink-0 gap-1">
+                    {(['in', 'maybe', 'out'] as AvailabilityStatus[]).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleAvailability(p.player_id, s)}
+                        className={`rounded px-2 py-0.5 text-xs font-medium capitalize transition-colors ${
+                          status === s
+                            ? s === 'out'
+                              ? 'bg-field-clay text-white'
+                              : s === 'maybe'
+                                ? 'bg-field-gold text-field-ink'
+                                : 'bg-field-grass text-white'
+                            : 'border border-field-line text-field-muted hover:bg-field-cream'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </details>
+      )}
     </div>
   )
 
   return (
     <div className="space-y-6">
-      {/* Full Lineup Lab — trends, The Read, auto-optimize — with inline
-          position selectors and the next-game header injected on top. */}
+      {/* Game selection, scouting & availability above the optimizer. */}
+      {gameHeader}
+
+      {/* Full Lineup Lab — trends, The Read, auto-optimize, inline positions.
+          Keyed on the available set so it re-optimizes when availability or the
+          selected game changes. */}
       <LineupLab
-        players={players}
+        key={labKey}
+        players={availablePlayers}
         seasons={seasons}
         selectedSeasonId={selectedSeasonId}
         onOrderChange={setOrder}
         positions={positions}
         onPositionChange={handlePositionChange}
         embedded
-        header={gameHeader}
       />
 
       {order.length > 0 && (

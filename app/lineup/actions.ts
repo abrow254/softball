@@ -1,15 +1,23 @@
 'use server'
 
-import { getCurrentUser } from '@/lib/auth'
-import { replaceLineup } from '@/lib/db'
+import { requireAdmin } from '@/lib/auth'
+import { replaceLineup, setAvailability } from '@/lib/db'
+import type { AvailabilityStatus } from '@/lib/types'
 
 export async function saveLineupAction(
   gameId: string,
   rows: Array<{ player_id: string; batting_order: number | null; starting_pos: string | null }>,
 ) {
-  const user = await getCurrentUser()
-  if (!user || user.role !== 'admin') {
-    throw new Error('Unauthorized')
-  }
+  await requireAdmin()
   await replaceLineup(gameId, rows)
+}
+
+export async function setAvailabilityAction(
+  seasonId: string,
+  gameDate: string,
+  playerId: string,
+  status: AvailabilityStatus,
+) {
+  await requireAdmin()
+  await setAvailability(seasonId, gameDate, playerId, status)
 }

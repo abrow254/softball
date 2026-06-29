@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listSeasons, getCurrentSeason, getLineupLabData } from '@/lib/db'
+import { listSeasons, getCurrentSeason, getLineupLabData, getAvailability } from '@/lib/db'
 import { getSchedule } from '@/lib/schedule'
 import { getStandings } from '@/lib/standings'
 import { analyzeOpponent, type OppAnalysis } from '@/lib/opponentScouting'
 import { LineupLabComplete, type UpcomingMatch } from '@/components/LineupLabComplete'
+import type { AvailabilityStatus } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,16 @@ export default async function LineupPage({
       analysis: standings ? (analyzeOpponent(standings, g.opponent) as OppAnalysis | null) : null,
     }))
 
+  // Availability per upcoming date, so switching games client-side is instant.
+  const availabilityEntries = await Promise.all(
+    upcomingMatches.map(async (m) => {
+      const rows = await getAvailability(selectedSeasonId, m.date)
+      return [m.date, rows.map((r) => ({ player_id: r.player_id, status: r.status }))] as const
+    }),
+  )
+  const availabilityByDate: Record<string, { player_id: string; status: AvailabilityStatus }[]> =
+    Object.fromEntries(availabilityEntries)
+
   return (
     <LineupLabComplete
       key={selectedSeasonId}
@@ -70,6 +81,7 @@ export default async function LineupPage({
       seasons={seasons}
       selectedSeasonId={selectedSeasonId}
       upcomingMatches={upcomingMatches}
+      availabilityByDate={availabilityByDate}
     />
   )
 }

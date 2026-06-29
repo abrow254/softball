@@ -227,6 +227,17 @@ export interface LineupLabPlayer {
   recentForm: number  // mean balanced-form of last-3 games; 0 if fewer than 1 game
 }
 
+export type AvailabilityStatus = 'in' | 'out' | 'maybe'
+
+export interface Availability {
+  id: string
+  season_id: string
+  game_date: string
+  player_id: string
+  status: AvailabilityStatus
+  updated_at: string
+}
+
 // One player's aggregated line at a given batting-order spot, from batting_order_stats.
 export interface BattingOrderRow {
   season_id: string
