@@ -55,15 +55,20 @@ export default async function SchedulePage() {
     })(),
   ])
 
-  // Load DB games and resolve Player of the Game per game. Keyed by game_date
-  // (ISO) — both the scraped schedule and the DB store dates, and they match
-  // exactly, unlike opponent name strings (scraped vs hand-entered).
+  // Load DB games and resolve Player of the Game per game. We index each game
+  // by BOTH its date and its (normalized) opponent name, then match a schedule
+  // row by date first and fall back to opponent — because some DB games have a
+  // missing/mismatched date while others have a name that differs from the
+  // scraped schedule. Using both keys covers every game.
   interface GameInfo {
     gameId: string
     potgName: string | null
     potgLine: string | null
   }
   const gamesByDate = new Map<string, GameInfo>()
+  const gamesByOpponent = new Map<string, GameInfo>()
+  const normOpp = (s: string | null | undefined) =>
+    (s ?? '').toLowerCase().replace(/^the\s+/, '').replace(/\s+/g, ' ').trim()
 
   if (currentSeason && schedule) {
     const games = await listGames(currentSeason.id)
@@ -72,8 +77,9 @@ export default async function SchedulePage() {
     const playerMap = new Map((players ?? []).map((p) => [p.id, p.name]))
 
     for (const g of games) {
-      // Skip the bulk-import aggregate row and anything without a real date.
-      if (g.is_aggregate || !g.game_date) continue
+      // Skip only the bulk-import aggregate row — it's not a real game. Games
+      // with a null date are still indexed (by opponent) so they show up.
+      if (g.is_aggregate) continue
 
       const boxScore = await getBoxScore(g.id)
       let potgName: string | null = null
@@ -93,7 +99,9 @@ export default async function SchedulePage() {
         }
       }
 
-      gamesByDate.set(g.game_date, { gameId: g.id, potgName, potgLine })
+      const info: GameInfo = { gameId: g.id, potgName, potgLine }
+      if (g.game_date) gamesByDate.set(g.game_date, info)
+      if (g.opponent) gamesByOpponent.set(normOpp(g.opponent), info)
     }
   }
 
@@ -194,7 +202,7 @@ export default async function SchedulePage() {
           <ul className="divide-y divide-field-line overflow-hidden rounded-lg border border-field-line">
             {played.map((g) => {
               const res = resultOf(g)
-              const info = gamesByDate.get(g.date)
+              const info = gamesByDate.get(g.date) ?? gamesByOpponent.get(normOpp(g.opponent))
               const gameLink = info?.gameId ? `/games/${info.gameId}/card` : null
 
               const details = (
