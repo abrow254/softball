@@ -4,15 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 import { FIELDING_POSITIONS } from '@/lib/positions'
-import { createPlayerAction, updatePlayerAction } from '@/app/admin/roster/actions'
+import { createPlayerAction, updatePlayerAction, setSeasonRosterAction } from '@/app/admin/roster/actions'
 
-function PositionChips({
-  selected,
-  onToggle,
-}: {
-  selected: string[]
-  onToggle: (pos: string) => void
-}) {
+function PositionChips({ selected, onToggle }: { selected: string[]; onToggle: (pos: string) => void }) {
   return (
     <div className="flex flex-wrap gap-1">
       {FIELDING_POSITIONS.map((pos) => {
@@ -36,32 +30,42 @@ function PositionChips({
   )
 }
 
-function PlayerRow({ player }: { player: Player }) {
+function PlayerRow({
+  player,
+  seasonId,
+  onRoster,
+}: {
+  player: Player
+  seasonId: string
+  onRoster: boolean
+}) {
   const router = useRouter()
+  const [playing, setPlaying] = useState(onRoster)
   const [gender, setGender] = useState<'M' | 'F' | ''>(player.gender ?? '')
-  const [active, setActive] = useState(player.active)
   const [positions, setPositions] = useState<string[]>(player.positions ?? [])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const dirty =
+  const detailsDirty =
     (gender || null) !== (player.gender ?? null) ||
-    active !== player.active ||
     positions.slice().sort().join(',') !== (player.positions ?? []).slice().sort().join(',')
 
   function togglePos(pos: string) {
     setPositions((prev) => (prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos]))
   }
 
-  async function save() {
+  async function togglePlaying() {
+    const next = !playing
+    setPlaying(next)
+    await setSeasonRosterAction(seasonId, player.id, next)
+    router.refresh()
+  }
+
+  async function saveDetails() {
     setSaving(true)
     setSaved(false)
     try {
-      await updatePlayerAction(player.id, {
-        gender: gender || null,
-        active,
-        positions,
-      })
+      await updatePlayerAction(player.id, { gender: gender || null, positions })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
       router.refresh()
@@ -71,34 +75,33 @@ function PlayerRow({ player }: { player: Player }) {
   }
 
   return (
-    <div className="rounded-lg border border-field-line bg-field-paper p-3">
+    <div className={`rounded-lg border p-3 ${playing ? 'border-field-line bg-field-paper' : 'border-field-line bg-field-cream/30'}`}>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="min-w-0 flex-1 truncate font-medium text-field-ink">{player.name}</span>
-
-        <select
-          value={gender}
-          onChange={(e) => setGender(e.target.value as 'M' | 'F' | '')}
-          className="rounded border border-field-line px-2 py-1 text-xs"
-          aria-label={`Gender for ${player.name}`}
-        >
-          <option value="">— gender</option>
-          <option value="M">M</option>
-          <option value="F">F</option>
-        </select>
-
-        <label className="flex items-center gap-1 text-xs text-field-muted">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-          Active
+        <label className="flex items-center gap-1.5 text-sm">
+          <input type="checkbox" checked={playing} onChange={togglePlaying} />
+          <span className={playing ? 'font-medium text-field-ink' : 'text-field-muted'}>{player.name}</span>
         </label>
 
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || saving}
-          className="rounded-md bg-field-grass px-3 py-1.5 text-xs font-medium text-white hover:bg-field-grass/90 disabled:opacity-40"
-        >
-          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value as 'M' | 'F' | '')}
+            className="rounded border border-field-line px-2 py-1 text-xs"
+            aria-label={`Gender for ${player.name}`}
+          >
+            <option value="">— gender</option>
+            <option value="M">M</option>
+            <option value="F">F</option>
+          </select>
+          <button
+            type="button"
+            onClick={saveDetails}
+            disabled={!detailsDirty || saving}
+            className="rounded-md bg-field-grass px-3 py-1.5 text-xs font-medium text-white hover:bg-field-grass/90 disabled:opacity-40"
+          >
+            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+          </button>
+        </div>
       </div>
 
       <div className="mt-2 space-y-1">
@@ -113,7 +116,7 @@ function PlayerRow({ player }: { player: Player }) {
   )
 }
 
-function AddPlayer() {
+function AddPlayer({ seasonId }: { seasonId: string }) {
   const router = useRouter()
   const [name, setName] = useState('')
   const [gender, setGender] = useState<'M' | 'F' | ''>('')
@@ -123,7 +126,9 @@ function AddPlayer() {
     if (!name.trim()) return
     setBusy(true)
     try {
-      await createPlayerAction({ name: name.trim(), gender: gender || null })
+      const player = await createPlayerAction({ name: name.trim(), gender: gender || null })
+      // New players join the selected season's roster by default.
+      await setSeasonRosterAction(seasonId, player.id, true)
       setName('')
       setGender('')
       router.refresh()
@@ -162,28 +167,45 @@ function AddPlayer() {
   )
 }
 
-export function RosterEditor({ players }: { players: Player[] }) {
-  const active = players.filter((p) => p.active)
-  const inactive = players.filter((p) => !p.active)
+export function RosterEditor({
+  players,
+  seasonId,
+  seasonLabel,
+  rosterIds,
+}: {
+  players: Player[]
+  seasonId: string
+  seasonLabel: string
+  rosterIds: string[]
+}) {
+  const rosterSet = new Set(rosterIds)
+  const onRoster = players.filter((p) => rosterSet.has(p.id))
+  const others = players.filter((p) => !rosterSet.has(p.id))
 
   return (
     <div className="space-y-4">
-      <AddPlayer />
+      <AddPlayer seasonId={seasonId} />
 
-      <div className="space-y-1.5">
-        {active.map((p) => (
-          <PlayerRow key={p.id} player={p} />
+      <section className="space-y-1.5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">
+          Playing {seasonLabel} · {onRoster.length}
+        </h2>
+        {onRoster.length === 0 && (
+          <p className="text-sm text-field-muted">No one on the roster yet — check players below.</p>
+        )}
+        {onRoster.map((p) => (
+          <PlayerRow key={p.id} player={p} seasonId={seasonId} onRoster />
         ))}
-      </div>
+      </section>
 
-      {inactive.length > 0 && (
-        <details className="space-y-1.5">
+      {others.length > 0 && (
+        <details>
           <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-field-muted">
-            Inactive · {inactive.length}
+            Not playing {seasonLabel} · {others.length}
           </summary>
           <div className="mt-2 space-y-1.5">
-            {inactive.map((p) => (
-              <PlayerRow key={p.id} player={p} />
+            {others.map((p) => (
+              <PlayerRow key={p.id} player={p} seasonId={seasonId} onRoster={false} />
             ))}
           </div>
         </details>

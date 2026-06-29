@@ -2,8 +2,19 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth'
-import { createPlayer, updatePlayer } from '@/lib/db'
+import { createPlayer, updatePlayer, setSeasonRosterMember } from '@/lib/db'
 import type { Gender, Player } from '@/lib/types'
+
+export async function setSeasonRosterAction(
+  seasonId: string,
+  playerId: string,
+  onRoster: boolean,
+): Promise<void> {
+  await requireAdmin()
+  await setSeasonRosterMember(seasonId, playerId, onRoster)
+  revalidatePath('/admin/roster')
+  revalidatePath('/lineup')
+}
 
 export async function updatePlayerAction(
   id: string,
