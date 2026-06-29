@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import type { LineupLabPlayer, Season } from '@/lib/types'
 import {
@@ -249,6 +249,7 @@ interface LineupLabProps {
   players: LineupLabPlayer[]
   seasons: Season[]
   selectedSeasonId: string
+  onOrderChange?: (order: string[]) => void
 }
 
 function initialState(players: LineupLabPlayer[]) {
@@ -278,10 +279,16 @@ function initialState(players: LineupLabPlayer[]) {
   return { order: orderIds, bench: initialBenchIds }
 }
 
-export function LineupLab({ players, seasons, selectedSeasonId }: LineupLabProps) {
+export function LineupLab({ players, seasons, selectedSeasonId, onOrderChange }: LineupLabProps) {
   const [{ order, bench }, setState] = useState(() => initialState(players))
   const [selectedBenchId, setSelectedBenchId] = useState<string | null>(null)
   const [optimizeFlash, setOptimizeFlash] = useState(false)
+
+  // Notify parent when order changes
+  useEffect(() => {
+    const nonPlaceholders = order.filter((id) => !isPlaceholder(id))
+    onOrderChange?.(nonPlaceholders)
+  }, [order, onOrderChange])
 
   const playerMap = useMemo(
     () => new Map(players.map((p) => [p.player_id, p])),
