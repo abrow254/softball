@@ -1,6 +1,7 @@
+import Link from 'next/link'
 import { getSchedule, SCHEDULE_SOURCE_URL, type ScheduleGame } from '@/lib/schedule'
 import { getStandings, STANDINGS_SOURCE } from '@/lib/standings'
-import { listGames } from '@/lib/db'
+import { listGames, getBoxScore } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
 
 export const revalidate = 3600
@@ -53,8 +54,17 @@ export default async function SchedulePage() {
     })(),
   ])
 
-  // Load games from database to get PotG info
-  let gamesByOpponent: Map<string, { potg_player_id: string | null; potg_player_name: string | null }> = new Map()
+  // Load games from database to get PotG and box scores
+  let gamesByOpponent: Map<
+    string,
+    {
+      gameId: string
+      potg_player_id: string | null
+      potg_player_name: string | null
+      boxScore: Awaited<ReturnType<typeof getBoxScore>> | null
+    }
+  > = new Map()
+
   if (currentSeason && schedule) {
     const games = await listGames(currentSeason.id)
     const supabase = createClient()
@@ -62,12 +72,13 @@ export default async function SchedulePage() {
     const playerMap = new Map((players ?? []).map((p) => [p.id, p.name]))
 
     for (const g of games) {
-      if (g.potg_player_id) {
-        gamesByOpponent.set(g.opponent ?? '', {
-          potg_player_id: g.potg_player_id,
-          potg_player_name: (playerMap.get(g.potg_player_id) ?? null) as string | null,
-        })
-      }
+      const boxScore = await getBoxScore(g.id)
+      gamesByOpponent.set(g.opponent ?? '', {
+        gameId: g.id,
+        potg_player_id: g.potg_player_id,
+        potg_player_name: (playerMap.get(g.potg_player_id) ?? null) as string | null,
+        boxScore,
+      })
     }
   }
 
@@ -169,23 +180,73 @@ export default async function SchedulePage() {
             {played.map((g) => {
               const res = resultOf(g)
               const potg = gamesByOpponent.get(g.opponent ?? '')
+              const gameLink = potg?.gameId ? `/games/${potg.gameId}/card` : null
+
               return (
-                <li key={`${g.date}-${g.opponent}`} className="bg-field-paper px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-field-ink">{g.opponent}</div>
-                      <div className="text-xs text-field-muted">{shortDate(g.date)}</div>
-                      {potg?.potg_player_name && (
-                        <div className="mt-0.5 text-xs text-field-grass font-semibold">⭐ {potg.potg_player_name}</div>
-                      )}
+                <li key={`${g.date}-${g.opponent}`} className="bg-field-paper">
+                  {gameLink ? (
+                    <Link href={gameLink} className="block px-4 py-3 hover:bg-field-cream/50 transition-colors">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-field-ink">{g.opponent}</div>
+                          <div className="text-xs text-field-muted">{shortDate(g.date)}</div>
+                          {potg?.potg_player_name && (
+                            <div className="mt-0.5 space-y-0.5">
+                              <div className="text-xs text-field-grass font-semibold">⭐ {potg.potg_player_name}</div>
+                              {potg?.boxScore && (
+                                <div className="text-xs text-field-muted tabular">
+                                  {potg.boxScore
+                                    .find((p) => p.player_id === potg.potg_player_id)
+                                    ? (() => {
+                                        const line = potg.boxScore!.find((p) => p.player_id === potg.potg_player_id)!
+                                        return `${line.ab}AB ${line.hits}H ${line.rbi}RBI ${line.runs}R`
+                                      })()
+                                    : ''}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span className="tabular text-sm text-field-ink">
+                            {g.ourScore}–{g.oppScore}
+                          </span>
+                          {res && <span className={`w-4 text-right font-semibold ${RESULT_CLASS[res]}`}>{res}</span>}
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-field-ink">{g.opponent}</div>
+                          <div className="text-xs text-field-muted">{shortDate(g.date)}</div>
+                          {potg?.potg_player_name && (
+                            <div className="mt-0.5 space-y-0.5">
+                              <div className="text-xs text-field-grass font-semibold">⭐ {potg.potg_player_name}</div>
+                              {potg?.boxScore && (
+                                <div className="text-xs text-field-muted tabular">
+                                  {potg.boxScore
+                                    .find((p) => p.player_id === potg.potg_player_id)
+                                    ? (() => {
+                                        const line = potg.boxScore!.find((p) => p.player_id === potg.potg_player_id)!
+                                        return `${line.ab}AB ${line.hits}H ${line.rbi}RBI ${line.runs}R`
+                                      })()
+                                    : ''}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span className="tabular text-sm text-field-ink">
+                            {g.ourScore}–{g.oppScore}
+                          </span>
+                          {res && <span className={`w-4 text-right font-semibold ${RESULT_CLASS[res]}`}>{res}</span>}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="tabular text-sm text-field-ink">
-                        {g.ourScore}–{g.oppScore}
-                      </span>
-                      {res && <span className={`w-4 text-right font-semibold ${RESULT_CLASS[res]}`}>{res}</span>}
-                    </div>
-                  </div>
+                  )}
                 </li>
               )
             })}
