@@ -10,7 +10,7 @@ import { AlignmentBuilder } from '@/components/AlignmentBuilder'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
 import { calcLineupScore, getSlotConfigs } from '@/lib/optimizer'
-import { setAvailabilityAction } from '@/app/lineup/actions'
+import { setAvailabilityAction, saveLineupForMatchAction } from '@/app/lineup/actions'
 
 type CardTarget = 'lineup' | 'scorecard'
 
@@ -53,6 +53,8 @@ export function LineupLabComplete({
   const [positions, setPositions] = useState<Map<string, string>>(new Map())
   const [target, setTarget] = useState<CardTarget>('lineup')
   const [pinnedB, setPinnedB] = useState<{ score: number; n: number } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
   // RSVP availability for the selected date: playerId -> status. Seeded from the
   // server, edited optimistically as toggles are clicked.
@@ -100,6 +102,26 @@ export function LineupLabComplete({
   function print(which: CardTarget) {
     flushSync(() => setTarget(which))
     window.print()
+  }
+
+  async function saveLineup() {
+    if (!selectedMatch || order.length === 0) return
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const rows = order.map((id, i) => ({
+        player_id: id,
+        batting_order: i + 1,
+        starting_pos: positions.get(id) || null,
+      }))
+      await saveLineupForMatchAction(selectedSeasonId, selectedMatch.date, selectedMatch.opponent, rows)
+      setSaveMsg('✓ Lineup saved')
+      setTimeout(() => setSaveMsg(null), 3000)
+    } catch (e) {
+      setSaveMsg(`Error: ${e instanceof Error ? e.message : 'could not save'}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Current lineup score (slot-value model) for the live order.
@@ -296,12 +318,20 @@ export function LineupLabComplete({
             <AlignmentBuilder entries={alignmentEntries} />
           </section>
 
-          {/* ---- Export ---- */}
+          {/* ---- Save + Export ---- */}
           <section className="flex flex-wrap items-center gap-3">
             <button
               type="button"
+              onClick={saveLineup}
+              disabled={saving || !selectedMatch}
+              className="rounded-md bg-field-grass px-4 py-2 text-sm font-medium text-white hover:bg-field-grass/90 disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : 'Save lineup'}
+            </button>
+            <button
+              type="button"
               onClick={() => print('lineup')}
-              className="rounded-md bg-field-grass px-4 py-2 text-sm font-medium text-white hover:bg-field-grass/90"
+              className="rounded-md border border-field-line-strong px-4 py-2 text-sm font-medium text-field-ink hover:bg-field-cream"
             >
               Export Batting Order Card
             </button>
@@ -312,7 +342,18 @@ export function LineupLabComplete({
             >
               Export Lineup / Scorecard
             </button>
+            {saveMsg && (
+              <span
+                className={`text-sm font-medium ${saveMsg.startsWith('Error') ? 'text-field-clay' : 'text-field-grass'}`}
+              >
+                {saveMsg}
+              </span>
+            )}
           </section>
+          <p className="text-xs text-field-muted">
+            Saving stores the batting order and positions on this game — it powers the by-batting-order stats and stays
+            attached when you enter the box score later.
+          </p>
 
           {/* ---- Printable cards (hidden except on print) ---- */}
           <div className="hidden print:block space-y-4">

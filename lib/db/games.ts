@@ -100,6 +100,27 @@ export async function getBoxScore(gameId: string): Promise<BoxScoreRow[] | null>
   return rows
 }
 
+// Find the real (non-aggregate) game for a season + date, or create one. Used
+// when saving a lineup for an upcoming scheduled game that has no DB row yet.
+// Assumes one game per date for this league.
+export async function getOrCreateGame(
+  seasonId: string,
+  gameDate: string,
+  opponent: string | null,
+): Promise<Game> {
+  const supabase = createClient()
+  const { data: existing, error } = await supabase
+    .from('games')
+    .select('*')
+    .eq('season_id', seasonId)
+    .eq('game_date', gameDate)
+    .eq('is_aggregate', false)
+  if (error) throw new Error(error.message)
+  if (existing && existing.length > 0) return existing[0]
+
+  return upsertGame({ season_id: seasonId, game_date: gameDate, opponent, our_runs: null, opp_runs: null })
+}
+
 export interface GameInput {
   id?: string
   season_id: string
