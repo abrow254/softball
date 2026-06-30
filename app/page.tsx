@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getSchedule, type ScheduleGame } from '@/lib/schedule'
 import { getStandings } from '@/lib/standings'
-import { getCurrentSeason, getSeasonStats, listGames, getBoxScore } from '@/lib/db'
+import { getCurrentSeason, getSeasonStats, listGames, getBoxScore, getRecords } from '@/lib/db'
 import { selectPotG, formatPotGLine } from '@/lib/potg'
 import { TeamPhotoHero } from '@/components/TeamPhotoHero'
 import { OpponentScouting } from '@/components/OpponentScouting'
@@ -92,7 +92,12 @@ const QUICK_LINKS = [
 
 export default async function HomePage() {
   const today = new Date().toISOString().slice(0, 10)
-  const [schedule, standings, season] = await Promise.all([getSchedule(), getStandings(), getCurrentSeason()])
+  const [schedule, standings, season, records] = await Promise.all([
+    getSchedule(),
+    getStandings(),
+    getCurrentSeason(),
+    getRecords(),
+  ])
 
   // ---- Record, run diff, pool rank (from played games + standings) ----
   const played = (schedule ?? []).filter((g) => g.played).sort((a, b) => a.date.localeCompare(b.date))
@@ -283,6 +288,35 @@ export default async function HomePage() {
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-field-muted">Home Runs</h3>
               <LeaderList rows={leaders.hr} fmt={(r) => String(r.hr)} />
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Active streaks */}
+      {(records.onBaseStreak || records.multiHitStreak) && (
+        <section className="space-y-2">
+          <SectionHeading href="/players" cta="Records">Streaks</SectionHeading>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {records.onBaseStreak && (
+              <Link
+                href={`/players/${records.onBaseStreak.player_id}`}
+                className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center transition-colors hover:border-field-grass"
+              >
+                <div className="tabular text-xl font-semibold text-field-ink">{records.onBaseStreak.length}</div>
+                <div className="text-[11px] uppercase tracking-wide text-field-muted">On-base streak</div>
+                <div className="mt-0.5 truncate text-[11px] text-field-ink">{records.onBaseStreak.name}</div>
+              </Link>
+            )}
+            {records.multiHitStreak && (
+              <Link
+                href={`/players/${records.multiHitStreak.player_id}`}
+                className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center transition-colors hover:border-field-grass"
+              >
+                <div className="tabular text-xl font-semibold text-field-ink">{records.multiHitStreak.length}</div>
+                <div className="text-[11px] uppercase tracking-wide text-field-muted">Multi-hit games</div>
+                <div className="mt-0.5 truncate text-[11px] text-field-ink">{records.multiHitStreak.name}</div>
+              </Link>
+            )}
           </div>
         </section>
       )}

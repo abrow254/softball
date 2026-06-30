@@ -1,5 +1,6 @@
-import { getCareerStats } from '@/lib/db'
+import { getCareerStats, getRecords } from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
+import { RecordsPanel } from '@/components/RecordsPanel'
 import { CAREER_COLS } from '@/lib/statColumns'
 
 export const dynamic = 'force-dynamic'
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All-Time Stats — The Softball Team' }
 
 export default async function AllTimePage() {
-  const rows = await getCareerStats()
+  const [rows, records] = await Promise.all([getCareerStats(), getRecords()])
 
   return (
     <div className="space-y-6">
@@ -39,6 +40,11 @@ export default async function AllTimePage() {
         all-time leader. For rate stats (AVG, OBP, SLG, OPS, ISO, XBH%), players under 30 career AB are dimmed and sorted
         to the bottom so small samples don&rsquo;t top the board. House rules: OBP counts FC and divides by AB; OPS is AVG + SLG.
       </p>
+
+      <section className="space-y-4 border-t border-field-line pt-6">
+        <h2 className="text-xl font-semibold tracking-tight text-field-ink">Records</h2>
+        <RecordsPanel records={records} />
+      </section>
     </div>
   )
 }
