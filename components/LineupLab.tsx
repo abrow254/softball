@@ -264,6 +264,9 @@ interface LineupLabProps {
   // When provided, each batting-order row shows an inline position selector.
   positions?: Map<string, string>
   onPositionChange?: (playerId: string, pos: string) => void
+  // Canonical lineup score (placeholder slots included), so embedding pages
+  // show the same number as the Lab's own status chip.
+  onScoreChange?: (score: number) => void
   // Embedded mode (used inside the game-setup page): hides the internal
   // "Lineup Lab" title + season selector and renders a custom header instead.
   embedded?: boolean
@@ -271,10 +274,12 @@ interface LineupLabProps {
 }
 
 function initialState(players: LineupLabPlayer[]) {
+  // Everyone bats in this league, and availability (in/out/maybe) already
+  // decides who's in the pool — so the default order includes every available
+  // player. The bench is only for manual "sitting today" removals via ✕.
   const sorted = [...players].sort((a, b) => b.ops - a.ops)
-  const topN = Math.min(8, sorted.length)
-  const initialOrderPlayers = sorted.slice(0, topN)
-  const initialBenchIds = sorted.slice(topN).map((p) => p.player_id)
+  const initialOrderPlayers = sorted
+  const initialBenchIds: string[] = []
 
   const males = initialOrderPlayers.filter((p) => p.gender === 'M').length
   const nonMales = initialOrderPlayers.length - males
@@ -304,6 +309,7 @@ export function LineupLab({
   onOrderChange,
   positions,
   onPositionChange,
+  onScoreChange,
   embedded = false,
   header,
 }: LineupLabProps) {
@@ -316,6 +322,8 @@ export function LineupLab({
     const nonPlaceholders = order.filter((id) => !isPlaceholder(id))
     onOrderChange?.(nonPlaceholders)
   }, [order, onOrderChange])
+
+  // Share the canonical score with the embedding page (see score memo below).
 
   const playerMap = useMemo(
     () => new Map(players.map((p) => [p.player_id, p])),
@@ -343,6 +351,10 @@ export function LineupLab({
       ),
     [order, playerMap, slots],
   )
+
+  useEffect(() => {
+    onScoreChange?.(score)
+  }, [score, onScoreChange])
 
   const males = useMemo(
     () => order.filter((id) => !isPlaceholder(id) && playerMap.get(id)?.gender === 'M').length,

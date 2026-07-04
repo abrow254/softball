@@ -9,7 +9,6 @@ import { OpponentScouting } from '@/components/OpponentScouting'
 import { AlignmentBuilder } from '@/components/AlignmentBuilder'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
-import { calcLineupScore, getSlotConfigs } from '@/lib/optimizer'
 import { setAvailabilityAction, saveLineupForMatchAction } from '@/app/lineup/actions'
 
 type CardTarget = 'lineup' | 'scorecard'
@@ -124,15 +123,9 @@ export function LineupLabComplete({
     }
   }
 
-  // Current lineup score (slot-value model) for the live order.
-  const currentScore = useMemo(() => {
-    if (order.length === 0) return 0
-    const slots = getSlotConfigs(order.length)
-    return calcLineupScore(
-      order.map((id) => ({ obp: playerMap.get(id)?.obp ?? 0, slg: playerMap.get(id)?.slg ?? 0 })),
-      slots,
-    )
-  }, [order, playerMap])
+  // Canonical lineup score, reported by the Lab itself (placeholder slots
+  // included) so this panel always matches the Lab's own status chip.
+  const [currentScore, setCurrentScore] = useState(0)
 
   // Defensive alignment entries (batting order + assigned position + eligibility).
   const alignmentEntries = useMemo(
@@ -262,6 +255,7 @@ export function LineupLabComplete({
         onOrderChange={setOrder}
         positions={positions}
         onPositionChange={handlePositionChange}
+        onScoreChange={setCurrentScore}
         embedded
       />
 
@@ -285,6 +279,11 @@ export function LineupLabComplete({
                   >
                     {currentScore >= pinnedB.score ? '+' : ''}
                     {(currentScore - pinnedB.score).toFixed(3)} vs B ({pinnedB.score.toFixed(3)})
+                    {pinnedB.n !== order.length && (
+                      <span className="ml-1 text-xs text-field-muted">
+                        · B had {pinnedB.n} batters — sizes differ, compare loosely
+                      </span>
+                    )}
                   </span>
                 )}
               </div>

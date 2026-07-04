@@ -11,9 +11,10 @@
 //
 // Algorithm:
 //   n ≤ 8  — brute-force all permutations (≤40 320), keep best legal.
-//   n > 8  — enumerate valid cyclic gender patterns; for each, assign players
-//            greedily (best player to most-valuable open slot within gender
-//            group); return best across all patterns.
+//   n > 8  — enumerate valid cyclic gender patterns; for each, solve the
+//            player→slot assignment EXACTLY per gender group (bitmask DP over
+//            slotValue), so the OBP/SLG slot blends drive who lands where.
+//            Best across all patterns is the global optimum.
 
 import { FIELDING_POSITIONS } from '@/lib/positions'
 
@@ -24,20 +25,24 @@ export interface SlotConfig {
   b: number  // SLG emphasis
 }
 
-// Slots 1–8 verbatim from the spec.
+// Slots 1–5 keep the spec's leverage stances (best hitter 2nd, de-weighted
+// 3-hole, SLG-heavy cleanup — per The Book). Slots 6+ decline gently: in a
+// 7-inning cycling lineup the real cost of a lower slot is just fewer PAs
+// (~25% from top to 11th), so steep weights would exaggerate lineup-score
+// deltas without changing the order's shape.
 const BASE_SLOTS: SlotConfig[] = [
   { role: 'Leadoff', w: 1.00, a: 0.65, b: 0.35 },
   { role: '2-hole',  w: 1.05, a: 0.58, b: 0.42 },
   { role: '3-hole',  w: 0.80, a: 0.50, b: 0.50 },
   { role: 'Cleanup', w: 1.00, a: 0.40, b: 0.60 },
   { role: '5-hole',  w: 0.90, a: 0.45, b: 0.55 },
-  { role: '6-hole',  w: 0.74, a: 0.55, b: 0.45 },
-  { role: '7-hole',  w: 0.66, a: 0.50, b: 0.50 },
-  { role: '8-hole',  w: 0.60, a: 0.50, b: 0.50 },
+  { role: '6-hole',  w: 0.88, a: 0.55, b: 0.45 },
+  { role: '7-hole',  w: 0.84, a: 0.50, b: 0.50 },
+  { role: '8-hole',  w: 0.80, a: 0.50, b: 0.50 },
 ]
 
-// Extended weights for slots 9+ (descending from 0.55).
-const EXTENDED_WEIGHTS = [0.55, 0.50, 0.46, 0.42, 0.39, 0.36, 0.33, 0.30]
+// Extended weights for slots 9+ — PA-proportional gentle decline.
+const EXTENDED_WEIGHTS = [0.76, 0.72, 0.68, 0.65, 0.62, 0.59, 0.56, 0.53]
 
 export function getSlotConfigs(n: number): SlotConfig[] {
   return Array.from({ length: n }, (_, i) => {
@@ -46,7 +51,7 @@ export function getSlotConfigs(n: number): SlotConfig[] {
     const w =
       extIdx < EXTENDED_WEIGHTS.length
         ? EXTENDED_WEIGHTS[extIdx]
-        : Math.max(0.20, 0.30 - 0.03 * (extIdx - EXTENDED_WEIGHTS.length + 1))
+        : Math.max(0.50, 0.53 - 0.03 * (extIdx - EXTENDED_WEIGHTS.length + 1))
     return { role: `${i + 1}-hole`, w, a: 0.50, b: 0.50 }
   })
 }
@@ -90,7 +95,7 @@ export interface OptimizerInput {
   gender: 'M' | 'F' | null
   obp: number
   slg: number
-  ops: number  // used as tiebreaker in greedy assignment
+  ops: number  // display/reference; assignment is driven by obp+slg slot blends
 }
 
 export interface OptimizeResult {
@@ -111,7 +116,7 @@ export function optimize(players: OptimizerInput[]): OptimizeResult {
   }
 
   const slots = getSlotConfigs(n)
-  return n <= 8 ? bruteForce(players, slots) : greedyOptimize(players, slots)
+  return n <= 8 ? bruteForce(players, slots) : patternOptimize(players, slots)
 }
 
 // ---- Brute force (n ≤ 8) --------------------------------------------------------
@@ -159,58 +164,86 @@ function bruteForce(players: OptimizerInput[], slots: SlotConfig[]): OptimizeRes
   }
 }
 
-// ---- Greedy pattern-based (n > 8) -----------------------------------------------
+// ---- Exact pattern-based (n > 8) --------------------------------------------------
 // 1. Enumerate valid cyclic gender patterns for the given male/non-male counts.
-// 2. For each pattern, greedily assign: best player → most-valuable open slot
-//    within their gender group (OPS as the player ranking metric).
-// 3. Keep the assignment with the highest lineupScore.
+// 2. For each pattern, solve the player→slot assignment exactly per gender
+//    group with a bitmask DP maximizing summed slotValue — so the per-slot
+//    OBP/SLG blends (not just overall OPS rank) decide who bats where.
+// 3. Keep the best pattern. Since patterns cover every legal gender layout and
+//    the DP is optimal within a pattern, the result is the global optimum.
 
-function greedyOptimize(players: OptimizerInput[], slots: SlotConfig[]): OptimizeResult {
+function popcount(x: number): number {
+  let c = 0
+  while (x) {
+    x &= x - 1
+    c++
+  }
+  return c
+}
+
+// Optimal assignment of a group's players to that group's slots (both length k)
+// maximizing summed slotValue. O(2^k · k) — trivial for rec-roster group sizes.
+function assignGroupOptimal(
+  playerIdxs: number[],
+  slotIdxs: number[],
+  players: OptimizerInput[],
+  slots: SlotConfig[],
+): { value: number; bySlot: Map<number, number> } {
+  const k = playerIdxs.length
+  const size = 1 << k
+  const dp = new Float64Array(size).fill(-Infinity)
+  const choice = new Int32Array(size).fill(-1)
+  dp[0] = 0
+
+  for (let mask = 1; mask < size; mask++) {
+    const slot = slots[slotIdxs[popcount(mask) - 1]]
+    for (let p = 0; p < k; p++) {
+      if (!(mask & (1 << p))) continue
+      const prev = dp[mask ^ (1 << p)]
+      if (prev === -Infinity) continue
+      const pl = players[playerIdxs[p]]
+      const v = prev + slotValue(pl.obp, pl.slg, slot)
+      if (v > dp[mask]) {
+        dp[mask] = v
+        choice[mask] = p
+      }
+    }
+  }
+
+  const bySlot = new Map<number, number>()
+  let mask = size - 1
+  while (mask > 0) {
+    const p = choice[mask]
+    bySlot.set(slotIdxs[popcount(mask) - 1], playerIdxs[p])
+    mask ^= 1 << p
+  }
+  return { value: k === 0 ? 0 : dp[size - 1], bySlot }
+}
+
+function patternOptimize(players: OptimizerInput[], slots: SlotConfig[]): OptimizeResult {
   const n = players.length
-  const maleCount = players.filter((p) => p.gender === 'M').length
-  const nonMaleCount = n - maleCount
-
-  // Player index arrays pre-sorted by OPS descending (used in assignment).
-  const malesByOps = players
-    .map((_, i) => i)
-    .filter((i) => players[i].gender === 'M')
-    .sort((a, b) => players[b].ops - players[a].ops)
-  const nonMalesByOps = players
-    .map((_, i) => i)
-    .filter((i) => players[i].gender !== 'M')
-    .sort((a, b) => players[b].ops - players[a].ops)
+  const maleIdxs = players.map((_, i) => i).filter((i) => players[i].gender === 'M')
+  const nonMaleIdxs = players.map((_, i) => i).filter((i) => players[i].gender !== 'M')
 
   let bestScore = -Infinity
   let bestOrder: number[] | null = null
 
-  for (const pattern of generateGenderPatterns(n, maleCount, nonMaleCount)) {
+  for (const pattern of generateGenderPatterns(n, maleIdxs.length, nonMaleIdxs.length)) {
     // pattern[i]: 1 = male slot, 0 = non-male slot
-    const maleSlots = pattern
-      .map((g, i) => (g === 1 ? i : -1))
-      .filter((i) => i >= 0)
-      .sort((a, b) => slots[b].w - slots[a].w)  // most valuable first
+    const maleSlotIdxs: number[] = []
+    const nonMaleSlotIdxs: number[] = []
+    pattern.forEach((g, i) => (g === 1 ? maleSlotIdxs : nonMaleSlotIdxs).push(i))
 
-    const nonMaleSlots = pattern
-      .map((g, i) => (g === 0 ? i : -1))
-      .filter((i) => i >= 0)
-      .sort((a, b) => slots[b].w - slots[a].w)
+    const m = assignGroupOptimal(maleIdxs, maleSlotIdxs, players, slots)
+    const f = assignGroupOptimal(nonMaleIdxs, nonMaleSlotIdxs, players, slots)
+    const score = m.value + f.value
 
-    // Assign i-th best player to i-th most-valuable slot within each group.
-    const assignment = new Array(n).fill(-1)
-    malesByOps.forEach((pi, rank) => {
-      if (rank < maleSlots.length) assignment[maleSlots[rank]] = pi
-    })
-    nonMalesByOps.forEach((pi, rank) => {
-      if (rank < nonMaleSlots.length) assignment[nonMaleSlots[rank]] = pi
-    })
-
-    const score = assignment.reduce(
-      (s, pi, si) => s + slotValue(players[pi].obp, players[pi].slg, slots[si]),
-      0,
-    )
     if (score > bestScore) {
+      const assignment = new Array<number>(n).fill(-1)
+      for (const [si, pi] of m.bySlot) assignment[si] = pi
+      for (const [si, pi] of f.bySlot) assignment[si] = pi
       bestScore = score
-      bestOrder = [...assignment]
+      bestOrder = assignment
     }
   }
 
@@ -219,7 +252,7 @@ function greedyOptimize(players: OptimizerInput[], slots: SlotConfig[]): Optimiz
   }
 
   return {
-    order: (bestOrder as number[]).map((i) => players[i].player_id),
+    order: bestOrder.map((i) => players[i].player_id),
     score: bestScore,
     feasible: true,
   }
