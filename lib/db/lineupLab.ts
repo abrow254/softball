@@ -15,7 +15,7 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
 
   const [rosterRes, statsRes, logsRes] = await Promise.all([
     supabase.from('season_roster').select('player_id').eq('season_id', seasonId),
-    supabase.from('season_stats').select('player_id, name, is_regular, avg, obp, slg, ops').eq('season_id', seasonId),
+    supabase.from('season_stats').select('player_id, name, is_regular, ab, avg, obp, slg, ops').eq('season_id', seasonId),
     supabase
       .from('player_game_log')
       .select('player_id, game_date, hits, fc, ab, slg')
@@ -54,15 +54,16 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
 
   // Career fallback for roster members without season stats yet.
   const needFallback = candidateIds.filter((id) => !statsByPlayer.has(id))
-  const careerByPlayer = new Map<string, { avg: number; obp: number; slg: number; ops: number }>()
+  const careerByPlayer = new Map<string, { ab: number; avg: number; obp: number; slg: number; ops: number }>()
   if (needFallback.length > 0) {
     const { data: career, error: careerErr } = await supabase
       .from('career_stats')
-      .select('player_id, avg, obp, slg, ops')
+      .select('player_id, ab, avg, obp, slg, ops')
       .in('player_id', needFallback)
     if (careerErr) throw new Error(careerErr.message)
     for (const c of career ?? []) {
       careerByPlayer.set(c.player_id, {
+        ab: Number(c.ab),
         avg: Number(c.avg),
         obp: Number(c.obp),
         slg: Number(c.slg),
@@ -86,6 +87,7 @@ export async function getLineupLabData(seasonId: string): Promise<LineupLabPlaye
       gender: (p?.gender as 'M' | 'F' | null) ?? null,
       positions: (p?.positions as string[]) ?? [],
       is_regular: s?.is_regular ?? false,
+      ab: Number(s?.ab ?? c?.ab ?? 0),
       avg: Number(s?.avg ?? c?.avg ?? 0),
       obp: Number(s?.obp ?? c?.obp ?? 0),
       slg: Number(s?.slg ?? c?.slg ?? 0),

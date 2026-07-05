@@ -63,6 +63,33 @@ export function slotValue(obp: number, slg: number, slot: SlotConfig): number {
   return slot.w * (slot.a * obp + slot.b * slg)
 }
 
+// ---- Small-sample regression ----------------------------------------------------
+// A 2-for-2 start shouldn't out-rank a proven .700 hitter, so the optimizer
+// ranks on rates regressed toward the pool average by ~K "phantom" at-bats.
+// Displayed stats stay raw; only the ranking inputs are shrunk.
+
+export const REGRESSION_K = 12
+
+export function poolPrior(players: { ab: number; obp: number; slg: number }[]): {
+  obp: number
+  slg: number
+} {
+  let totAb = 0
+  let wObp = 0
+  let wSlg = 0
+  for (const p of players) {
+    totAb += p.ab
+    wObp += p.ab * p.obp
+    wSlg += p.ab * p.slg
+  }
+  if (totAb === 0) return { obp: 0, slg: 0 }
+  return { obp: wObp / totAb, slg: wSlg / totAb }
+}
+
+export function regressRate(rate: number, ab: number, prior: number, k: number = REGRESSION_K): number {
+  return (ab * rate + k * prior) / (ab + k)
+}
+
 export function calcLineupScore(
   order: Array<{ obp: number; slg: number }>,
   slots: SlotConfig[],

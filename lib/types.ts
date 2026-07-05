@@ -219,6 +219,7 @@ export interface LineupLabPlayer {
   gender: Gender | null
   positions: string[]
   is_regular: boolean
+  ab: number          // at-bats behind the rates; drives small-sample regression
   avg: number
   obp: number
   slg: number

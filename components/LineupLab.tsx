@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import type { LineupLabPlayer, Season } from '@/lib/types'
 import {
@@ -10,6 +10,9 @@ import {
   getSlotConfigs,
   isFeasible,
   assignPositions,
+  poolPrior,
+  regressRate,
+  REGRESSION_K,
 } from '@/lib/optimizer'
 import { fmt3 } from '@/lib/formulas'
 import { LINEUP_POSITIONS as POSITIONS } from '@/lib/positions'
@@ -237,6 +240,7 @@ function TheRead({
 // ---- Stat cell ---------------------------------------------------------------
 
 function StatRow({ player }: { player: LineupLabPlayer }) {
+  const lowSample = player.ab < REGRESSION_K
   return (
     <div className="flex items-center gap-3 text-xs">
       <span className="font-mono tabular-nums text-field-muted">
@@ -249,6 +253,14 @@ function StatRow({ player }: { player: LineupLabPlayer }) {
         <span className="mr-0.5 font-semibold text-field-ink">{fmt3(player.ops)}</span>
         <span className="text-field-muted/60"> OPS</span>
       </span>
+      {lowSample && (
+        <span
+          className="shrink-0 rounded bg-field-cream px-1 py-0.5 text-[10px] font-medium italic text-field-muted"
+          title={`Only ${player.ab} AB — regressed toward the team average when ordering the lineup`}
+        >
+          {player.ab} AB
+        </span>
+      )}
       <Sparkline values={player.form} />
     </div>
   )
@@ -285,12 +297,13 @@ function initialState(players: LineupLabPlayer[]) {
   const nonMales = initialOrderPlayers.length - males
   const ph = makePlaceholderInputs(neededPlaceholders(males, nonMales))
 
+  const prior = poolPrior(players)
   const inputs = [
     ...initialOrderPlayers.map((p) => ({
       player_id: p.player_id,
       gender: p.gender,
-      obp: p.obp,
-      slg: p.slg,
+      obp: regressRate(p.obp, p.ab, prior.obp),
+      slg: regressRate(p.slg, p.ab, prior.slg),
       ops: p.ops,
     })),
     ...ph,
@@ -330,6 +343,18 @@ export function LineupLab({
     [players],
   )
 
+  // Pool prior + regressed rates: rank on small-sample-adjusted OBP/SLG so a
+  // few lucky at-bats don't hijack the order. Cards still show raw stats.
+  const prior = useMemo(() => poolPrior(players), [players])
+  const adjRates = useCallback(
+    (id: string) => {
+      const p = playerMap.get(id)
+      if (!p) return { obp: 0, slg: 0 }
+      return { obp: regressRate(p.obp, p.ab, prior.obp), slg: regressRate(p.slg, p.ab, prior.slg) }
+    },
+    [playerMap, prior],
+  )
+
   const slots = useMemo(() => getSlotConfigs(order.length), [order.length])
 
   const violations = useMemo(
@@ -343,13 +368,10 @@ export function LineupLab({
   const score = useMemo(
     () =>
       calcLineupScore(
-        order.map((id) => ({
-          obp: isPlaceholder(id) ? 0 : (playerMap.get(id)?.obp ?? 0),
-          slg: isPlaceholder(id) ? 0 : (playerMap.get(id)?.slg ?? 0),
-        })),
+        order.map((id) => (isPlaceholder(id) ? { obp: 0, slg: 0 } : adjRates(id))),
         slots,
       ),
-    [order, playerMap, slots],
+    [order, adjRates, slots],
   )
 
   useEffect(() => {
@@ -381,7 +403,8 @@ export function LineupLab({
     const inputs = [
       ...realIds.map((id) => {
         const p = playerMap.get(id)!
-        return { player_id: id, gender: p.gender, obp: p.obp, slg: p.slg, ops: p.ops }
+        const r = adjRates(id)
+        return { player_id: id, gender: p.gender, obp: r.obp, slg: r.slg, ops: p.ops }
       }),
       ...ph,
     ]
