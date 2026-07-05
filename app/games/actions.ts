@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '@/lib/auth'
-import { commitGame, createPlayer, getGame } from '@/lib/db'
+import { commitGame, createPlayer, getGame, uploadGamePhoto, deleteGamePhoto } from '@/lib/db'
 import { createClient } from '@/lib/supabase/server'
 import { playedThisGame, type SaveGameInput } from '@/lib/entry'
 import type { Player } from '@/lib/types'
@@ -56,6 +56,24 @@ export async function deleteGameAction(gameId: string): Promise<void> {
   if (error) throw new Error(error.message)
   revalidatePath('/stats')
   revalidatePath('/games')
+}
+
+// Upload a scorecard photo for a game (admin-only). Accepts a FormData 'file'.
+export async function uploadScorecardAction(gameId: string, formData: FormData): Promise<void> {
+  await requireAdmin()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No file provided')
+  if (!file.type.startsWith('image/')) throw new Error('File must be an image')
+  await uploadGamePhoto(gameId, file)
+  revalidatePath(`/games/${gameId}/card`)
+  revalidatePath(`/games/${gameId}/edit`)
+}
+
+export async function deleteScorecardAction(photoId: string, gameId: string): Promise<void> {
+  await requireAdmin()
+  await deleteGamePhoto(photoId)
+  revalidatePath(`/games/${gameId}/card`)
+  revalidatePath(`/games/${gameId}/edit`)
 }
 
 // Recalculate PotG for games that have stats but no PotG set (e.g., from bulk imports)

@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { getGame, getBoxScore } from '@/lib/db'
+import { getGame, getBoxScore, getGamePhotos } from '@/lib/db'
 import { BoxScore } from '@/components/BoxScore'
+import { ScorecardPhotos } from '@/components/ScorecardPhotos'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ export default async function GameCardPage({ params }: { params: { id: string } 
   const game = await getGame(params.id)
   if (!game) notFound()
 
-  const boxScore = await getBoxScore(game.id)
+  const [boxScore, photos] = await Promise.all([getBoxScore(game.id), getGamePhotos(game.id)])
 
   return (
     <div className="space-y-6">
@@ -53,6 +54,8 @@ export default async function GameCardPage({ params }: { params: { id: string } 
           )}
         </p>
       )}
+
+      <ScorecardPhotos gameId={game.id} photos={photos} isAdmin={current.role === 'admin'} />
     </div>
   )
 }
