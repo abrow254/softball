@@ -118,12 +118,20 @@ export async function getPlayerAccolades(playerId: string): Promise<PlayerAccola
       { key: 'rbi', label: 'RBI', emoji: '🏆' },
       { key: 'tb', label: 'total bases', emoji: '🧱' },
       { key: 'runs', label: 'runs', emoji: '🏃' },
+      { key: 'gp', label: 'games played', emoji: '🎮' },
     ]
     for (const cat of countingCats) {
       const mine = me[cat.key] as number
       if (mine <= 0) continue
       const rank = rankOf(mine, career.map((c) => c[cat.key] as number))
       if (rank <= 3) allTimeRanks.push({ label: cat.label, emoji: cat.emoji, rank, value: String(mine) })
+    }
+    // Extra-base hits (2B + 3B + HR) — a computed counting category.
+    const xbh = (c: CareerStatRow) => c.doubles + c.triples + c.hr
+    const myXbh = xbh(me)
+    if (myXbh > 0) {
+      const rank = rankOf(myXbh, career.map(xbh))
+      if (rank <= 3) allTimeRanks.push({ label: 'extra-base hits', emoji: '🧨', rank, value: String(myXbh) })
     }
     // Rate stats among the qualified career pool (>= 30 AB, matching All-Time page).
     const qualified = career.filter((c) => c.ab >= 30)
