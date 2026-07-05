@@ -125,11 +125,21 @@ export async function getPlayerAccolades(playerId: string): Promise<PlayerAccola
       const rank = rankOf(mine, career.map((c) => c[cat.key] as number))
       if (rank <= 3) allTimeRanks.push({ label: cat.label, emoji: cat.emoji, rank, value: String(mine) })
     }
-    // Rate stat (OPS) among the qualified career pool (>= 30 AB, matching All-Time page).
+    // Rate stats among the qualified career pool (>= 30 AB, matching All-Time page).
     const qualified = career.filter((c) => c.ab >= 30)
     if (me.ab >= 30) {
-      const rank = rankOf(me.ops, qualified.map((c) => c.ops))
-      if (rank <= 3) allTimeRanks.push({ label: 'OPS', emoji: '⚡', rank, value: me.ops.toFixed(3).replace(/^0/, '') })
+      const fmt3 = (n: number) => n.toFixed(3).replace(/^0/, '')
+      const rateCats: { key: keyof CareerStatRow; label: string; emoji: string }[] = [
+        { key: 'avg', label: 'average', emoji: '🎯' },
+        { key: 'obp', label: 'on-base %', emoji: '🧲' },
+        { key: 'slg', label: 'slugging', emoji: '💥' },
+        { key: 'ops', label: 'OPS', emoji: '⚡' },
+      ]
+      for (const cat of rateCats) {
+        const mine = me[cat.key] as number
+        const rank = rankOf(mine, qualified.map((c) => c[cat.key] as number))
+        if (rank <= 3) allTimeRanks.push({ label: cat.label, emoji: cat.emoji, rank, value: fmt3(mine) })
+      }
     }
     // PotG (from the all-time leaderboard in records).
     const potgIdx = records.potgLeaders.findIndex((p) => p.player_id === playerId)
