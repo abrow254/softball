@@ -3,8 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
-import { FIELDING_POSITIONS } from '@/lib/positions'
+import { FIELDING_POSITIONS, isFieldingPosition } from '@/lib/positions'
 import { createPlayerAction, updatePlayerAction, setSeasonRosterAction } from '@/app/admin/roster/actions'
+
+type PosCount = { pos: string; count: number }
+
+// A player's fielding depth chart inferred from real games: positions they've
+// actually played, most-frequent first, filtered to real fielding spots.
+function historyDepthChart(history: PosCount[]): string[] {
+  return history.filter((h) => isFieldingPosition(h.pos)).map((h) => h.pos)
+}
 
 function PositionChips({ selected, onToggle }: { selected: string[]; onToggle: (pos: string) => void }) {
   return (
@@ -34,10 +42,12 @@ function PlayerRow({
   player,
   seasonId,
   onRoster,
+  history,
 }: {
   player: Player
   seasonId: string
   onRoster: boolean
+  history: PosCount[]
 }) {
   const router = useRouter()
   const [playing, setPlaying] = useState(onRoster)
@@ -50,8 +60,16 @@ function PlayerRow({
     (gender || null) !== (player.gender ?? null) ||
     positions.slice().sort().join(',') !== (player.positions ?? []).slice().sort().join(',')
 
+  const depthChart = historyDepthChart(history)
+  // Only worth offering if history exists and doesn't already match the depth chart.
+  const canFill = depthChart.length > 0 && depthChart.join(',') !== positions.join(',')
+
   function togglePos(pos: string) {
     setPositions((prev) => (prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos]))
+  }
+
+  function fillFromHistory() {
+    if (depthChart.length > 0) setPositions(depthChart)
   }
 
   async function togglePlaying() {
@@ -110,6 +128,22 @@ function PlayerRow({
           <p className="text-[11px] text-field-muted">
             Depth chart (primary → backup): <span className="font-medium text-field-ink">{positions.join(' → ')}</span>
           </p>
+        )}
+        {history.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-field-muted">
+            <span>
+              Played: {history.map((h) => `${h.pos} ${h.count}`).join(' · ')}
+            </span>
+            {canFill && (
+              <button
+                type="button"
+                onClick={fillFromHistory}
+                className="rounded border border-field-line px-1.5 py-0.5 font-medium text-field-grass hover:border-field-grass"
+              >
+                Fill from history
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -172,29 +206,62 @@ export function RosterEditor({
   seasonId,
   seasonLabel,
   rosterIds,
+  posHistory,
 }: {
   players: Player[]
   seasonId: string
   seasonLabel: string
   rosterIds: string[]
+  posHistory: Record<string, PosCount[]>
 }) {
+  const router = useRouter()
+  const [fillingAll, setFillingAll] = useState(false)
   const rosterSet = new Set(rosterIds)
   const onRoster = players.filter((p) => rosterSet.has(p.id))
   const others = players.filter((p) => !rosterSet.has(p.id))
+
+  // Roster players with no positions set yet but a usable game history to seed from.
+  const fillableEmpty = onRoster.filter(
+    (p) => (p.positions ?? []).length === 0 && historyDepthChart(posHistory[p.id] ?? []).length > 0,
+  )
+
+  async function fillAllEmpty() {
+    setFillingAll(true)
+    try {
+      for (const p of fillableEmpty) {
+        await updatePlayerAction(p.id, { positions: historyDepthChart(posHistory[p.id] ?? []) })
+      }
+      router.refresh()
+    } finally {
+      setFillingAll(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
       <AddPlayer seasonId={seasonId} />
 
       <section className="space-y-1.5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">
-          Playing {seasonLabel} · {onRoster.length}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">
+            Playing {seasonLabel} · {onRoster.length}
+          </h2>
+          {fillableEmpty.length > 0 && (
+            <button
+              type="button"
+              onClick={fillAllEmpty}
+              disabled={fillingAll}
+              className="rounded-md border border-field-grass px-2.5 py-1 text-xs font-medium text-field-grass hover:bg-field-grass/5 disabled:opacity-40"
+            >
+              {fillingAll ? 'Filling…' : `Fill ${fillableEmpty.length} from history`}
+            </button>
+          )}
+        </div>
         {onRoster.length === 0 && (
           <p className="text-sm text-field-muted">No one on the roster yet — check players below.</p>
         )}
         {onRoster.map((p) => (
-          <PlayerRow key={p.id} player={p} seasonId={seasonId} onRoster />
+          <PlayerRow key={p.id} player={p} seasonId={seasonId} onRoster history={posHistory[p.id] ?? []} />
         ))}
       </section>
 
@@ -205,7 +272,7 @@ export function RosterEditor({
           </summary>
           <div className="mt-2 space-y-1.5">
             {others.map((p) => (
-              <PlayerRow key={p.id} player={p} seasonId={seasonId} onRoster={false} />
+              <PlayerRow key={p.id} player={p} seasonId={seasonId} onRoster={false} history={posHistory[p.id] ?? []} />
             ))}
           </div>
         </details>

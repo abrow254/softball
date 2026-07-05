@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { listPlayers, listSeasons, getCurrentSeason, getSeasonRoster } from '@/lib/db'
+import { listPlayers, listSeasons, getCurrentSeason, getSeasonRoster, getAllPositionHistory } from '@/lib/db'
 import { RosterEditor } from '@/components/RosterEditor'
 import { SeasonSelector } from '@/components/SeasonSelector'
 
@@ -34,7 +34,11 @@ export default async function RosterPage({
     searchParams.season && seasons.some((s) => s.id === searchParams.season) ? searchParams.season : fallback
   const selectedSeason = seasons.find((s) => s.id === selectedSeasonId) ?? null
 
-  const [players, rosterIds] = await Promise.all([listPlayers(), getSeasonRoster(selectedSeasonId)])
+  const [players, rosterIds, posHistory] = await Promise.all([
+    listPlayers(),
+    getSeasonRoster(selectedSeasonId),
+    getAllPositionHistory(),
+  ])
 
   return (
     <div className="space-y-5">
@@ -52,6 +56,7 @@ export default async function RosterPage({
         seasonId={selectedSeasonId}
         seasonLabel={selectedSeason?.label ?? ''}
         rosterIds={rosterIds}
+        posHistory={posHistory}
       />
     </div>
   )

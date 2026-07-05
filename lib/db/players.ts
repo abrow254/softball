@@ -70,3 +70,33 @@ export async function getPositionHistory(playerId: string): Promise<{ pos: strin
     .map(([pos, count]) => ({ pos, count }))
     .sort((a, b) => b.count - a.count)
 }
+
+// Position history for every player at once (real games only), keyed by player_id
+// and frequency-sorted. Powers "Fill from history" on the Roster page — one query
+// instead of one per player.
+export async function getAllPositionHistory(): Promise<Record<string, { pos: string; count: number }[]>> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('lineups')
+    .select('player_id, starting_pos')
+    .not('starting_pos', 'is', null)
+  if (error) throw new Error(error.message)
+
+  const byPlayer = new Map<string, Map<string, number>>()
+  for (const row of data ?? []) {
+    const pos = (row.starting_pos as string | null)?.trim()
+    if (!pos || pos === 'BE' || pos === 'Sit') continue
+    const pid = row.player_id as string
+    if (!byPlayer.has(pid)) byPlayer.set(pid, new Map())
+    const counts = byPlayer.get(pid)!
+    counts.set(pos, (counts.get(pos) ?? 0) + 1)
+  }
+
+  const out: Record<string, { pos: string; count: number }[]> = {}
+  for (const [pid, counts] of byPlayer) {
+    out[pid] = [...counts.entries()]
+      .map(([pos, count]) => ({ pos, count }))
+      .sort((a, b) => b.count - a.count)
+  }
+  return out
+}
