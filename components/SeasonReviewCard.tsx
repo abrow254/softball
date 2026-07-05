@@ -1,5 +1,6 @@
 import type { SeasonReview } from '@/lib/db/seasonReview'
 import { fmt3 } from '@/lib/formulas'
+import { isChampionSeason } from '@/lib/seasonRecords'
 
 // A self-contained, screenshot-friendly season-in-review card for one player.
 // Fixed to the light "paper" palette so it reads the same wherever it's shared.
@@ -20,6 +21,7 @@ function Stat({ label, value, big }: { label: string; value: string; big?: boole
 
 export function SeasonReviewCard({ review }: { review: SeasonReview }) {
   const { line } = review
+  const champion = isChampionSeason(review.year, review.term)
   return (
     <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl bg-gradient-to-br from-field-cream to-field-paper shadow-lg ring-1 ring-field-line-strong">
       {/* Header band */}
@@ -34,6 +36,11 @@ export function SeasonReviewCard({ review }: { review: SeasonReview }) {
             {review.seasonLabel}
           </span>
         </div>
+        {champion && (
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-field-gold px-2.5 py-0.5 text-xs font-bold text-field-ink">
+            🏆 League Champions
+          </div>
+        )}
       </div>
 
       <div className="space-y-4 px-5 py-4">

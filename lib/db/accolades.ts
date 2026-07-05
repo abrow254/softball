@@ -3,6 +3,7 @@ import type { CareerStatRow } from '@/lib/types'
 import { getSeasonAwards } from '@/lib/db/awards'
 import { getRecords } from '@/lib/db/records'
 import { getCareerStats } from '@/lib/db/career'
+import { isChampionSeason } from '@/lib/seasonRecords'
 
 // A player's "trophy case": season awards won, all-time leaderboard finishes,
 // and single-game team records they hold. Aggregated across every season so the
@@ -29,6 +30,7 @@ export interface GameRecordHeld {
 }
 
 export interface PlayerAccolades {
+  championships: string[] // season labels the player was part of, newest first
   seasonAwards: SeasonAwardWon[]
   allTimeRanks: AllTimeRank[]
   gameRecords: GameRecordHeld[]
@@ -56,12 +58,31 @@ export async function getPlayerAccolades(playerId: string): Promise<PlayerAccola
   if (error) throw new Error(error.message)
   const seasons = seasonsData ?? []
   const termRank = (t: string) => (t === 'Fall' ? 1 : 0)
+  const champIds = seasons.filter((s) => isChampionSeason(s.year, s.term)).map((s) => s.id)
 
-  const [awardsBySeasons, records, career] = await Promise.all([
+  const [awardsBySeasons, records, career, rosterRes] = await Promise.all([
     Promise.all(seasons.map((s) => getSeasonAwards(s.id))),
     getRecords(),
     getCareerStats(),
+    champIds.length > 0
+      ? supabase.from('season_roster').select('season_id').eq('player_id', playerId).in('season_id', champIds)
+      : Promise.resolve({ data: [], error: null }),
   ])
+
+  // ---- Championships (played the season, by stats or roster) ----
+  const rosterChampIds = new Set((rosterRes.data ?? []).map((r) => r.season_id as string))
+  const championships: string[] = []
+  seasons.forEach((s, i) => {
+    if (!isChampionSeason(s.year, s.term)) return
+    const played = awardsBySeasons[i].all.some((r) => r.player_id === playerId) || rosterChampIds.has(s.id)
+    if (played) championships.push(s.label)
+  })
+  championships.sort((a, b) => {
+    const sa = seasons.find((s) => s.label === a)
+    const sb = seasons.find((s) => s.label === b)
+    if (!sa || !sb) return 0
+    return sb.year - sa.year || termRank(sb.term) - termRank(sa.term)
+  })
 
   // ---- Season awards won ----
   const seasonAwards: SeasonAwardWon[] = []
@@ -128,5 +149,5 @@ export async function getPlayerAccolades(playerId: string): Promise<PlayerAccola
     }
   }
 
-  return { seasonAwards, allTimeRanks, gameRecords }
+  return { championships, seasonAwards, allTimeRanks, gameRecords }
 }

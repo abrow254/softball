@@ -1,32 +1,84 @@
-import type { PlayerAccolades } from '@/lib/db/accolades'
+import type { PlayerAccolades, SeasonAwardWon } from '@/lib/db/accolades'
 
 const medal = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉')
 const ordinal = (n: number) => (n === 1 ? '1st' : n === 2 ? '2nd' : `${n}rd`)
 
+// "2024 Summer" -> "2024 Su" so a season list stays compact.
+const shortSeason = (label: string) => label.replace(/\bSummer\b/, 'Su').replace(/\bFall\b/, 'Fa')
+
+// Collapse one-chip-per-season into one row per award, keeping input order
+// (newest-first), e.g. MVP → [2025 Su, 2024 Fa].
+function groupAwards(awards: SeasonAwardWon[]) {
+  const groups: { label: string; emoji: string; seasons: string[] }[] = []
+  const byLabel = new Map<string, { label: string; emoji: string; seasons: string[] }>()
+  for (const a of awards) {
+    let g = byLabel.get(a.label)
+    if (!g) {
+      g = { label: a.label, emoji: a.emoji, seasons: [] }
+      byLabel.set(a.label, g)
+      groups.push(g)
+    }
+    g.seasons.push(shortSeason(a.season))
+  }
+  // Most-decorated award first.
+  return groups.sort((a, b) => b.seasons.length - a.seasons.length)
+}
+
 // The player's honours: season awards, all-time top-3 finishes, and single-game
 // team records held. Rendered as a section on the profile; null if empty.
 export function TrophyCase({ accolades }: { accolades: PlayerAccolades }) {
-  const { seasonAwards, allTimeRanks, gameRecords } = accolades
-  if (seasonAwards.length === 0 && allTimeRanks.length === 0 && gameRecords.length === 0) return null
+  const { championships, seasonAwards, allTimeRanks, gameRecords } = accolades
+  if (
+    championships.length === 0 &&
+    seasonAwards.length === 0 &&
+    allTimeRanks.length === 0 &&
+    gameRecords.length === 0
+  )
+    return null
 
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Trophy case</h2>
 
-      {seasonAwards.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {seasonAwards.map((a, i) => (
-            <span
-              key={`${a.season}-${a.label}-${i}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-field-gold/40 bg-field-gold/15 px-3 py-1.5 text-sm text-field-ink"
-              title={`${a.label} · ${a.value}`}
-            >
-              <span aria-hidden>{a.emoji}</span>
-              <span className="font-semibold">{a.label}</span>
-              <span className="text-xs text-field-muted">{a.season}</span>
+      {championships.length > 0 && (
+        <div className="rounded-lg border border-field-gold/50 bg-field-gold/15 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl" aria-hidden>🏆</span>
+            <span className="font-semibold text-field-ink">
+              {championships.length}× League Champion
             </span>
-          ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {championships.map((c) => (
+              <span
+                key={c}
+                className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-field-ink ring-1 ring-field-gold/40"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
         </div>
+      )}
+
+      {seasonAwards.length > 0 && (
+        <ul className="space-y-1.5">
+          {groupAwards(seasonAwards).map((g) => (
+            <li
+              key={g.label}
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-field-gold/40 bg-field-gold/15 px-3 py-1.5 text-sm text-field-ink"
+            >
+              <span aria-hidden>{g.emoji}</span>
+              <span className="font-semibold">{g.label}</span>
+              {g.seasons.length > 1 && (
+                <span className="rounded-full bg-field-gold/40 px-1.5 text-xs font-semibold text-field-ink">
+                  ×{g.seasons.length}
+                </span>
+              )}
+              <span className="text-xs text-field-muted">{g.seasons.join(', ')}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {(allTimeRanks.length > 0 || gameRecords.length > 0) && (

@@ -56,6 +56,12 @@ export function TeamTrendChart({ records }: { records: SeasonRecord[] }) {
               >
                 {r.runDiff > 0 ? `+${r.runDiff}` : r.runDiff}
               </text>
+              {/* championship marker */}
+              {r.champion && (
+                <text x={cx} y={positive ? y - 18 : y + h + 25} textAnchor="middle" fontSize={13}>
+                  🏆
+                </text>
+              )}
               {/* season label */}
               <text x={cx} y={H - 26} textAnchor="middle" fontSize={10} fill="currentColor" fillOpacity={0.65}>
                 &rsquo;{String(r.year).slice(2)} {termShort(r.term)}

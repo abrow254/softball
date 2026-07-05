@@ -3,7 +3,7 @@ import { StatTable } from '@/components/StatTable'
 import { RecordsPanel } from '@/components/RecordsPanel'
 import { TeamTrendChart } from '@/components/TeamTrendChart'
 import { CAREER_COLS } from '@/lib/statColumns'
-import { SEASON_RECORDS, ALL_TIME } from '@/lib/seasonRecords'
+import { SEASON_RECORDS, ALL_TIME, CHAMPIONSHIPS } from '@/lib/seasonRecords'
 
 function AllTimeTile({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
@@ -59,16 +59,38 @@ export default async function AllTimePage() {
 
       <section className="space-y-4 border-t border-field-line pt-6">
         <h2 className="text-xl font-semibold tracking-tight text-field-ink">Team through the years</h2>
+
+        {CHAMPIONSHIPS.length > 0 && (
+          <div className="rounded-lg border border-field-gold/50 bg-field-gold/15 p-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl" aria-hidden>🏆</span>
+              <span className="font-semibold text-field-ink">
+                {CHAMPIONSHIPS.length}× League Champions
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {CHAMPIONSHIPS.map((c) => (
+                <span
+                  key={`${c.year}-${c.term}`}
+                  className="rounded-full bg-white/70 px-3 py-1 text-sm font-medium text-field-ink ring-1 ring-field-gold/40"
+                >
+                  🏆 {c.year} {c.term}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           <AllTimeTile label="All-time" value={`${ALL_TIME.w}-${ALL_TIME.l}${ALL_TIME.d > 0 ? `-${ALL_TIME.d}` : ''}`} />
-          <AllTimeTile label="Win %" value={ALL_TIME.winPct.toFixed(3).replace(/^0/, '')} />
+          <AllTimeTile label="Titles" value={String(CHAMPIONSHIPS.length)} tone="text-field-gold" />
           <AllTimeTile
             label="Run Diff"
             value={ALL_TIME.runDiff > 0 ? `+${ALL_TIME.runDiff}` : String(ALL_TIME.runDiff)}
             tone="text-field-grass"
           />
+          <AllTimeTile label="Win %" value={ALL_TIME.winPct.toFixed(3).replace(/^0/, '')} />
           <AllTimeTile label="RS/game" value={ALL_TIME.rsPerG.toFixed(1)} />
-          <AllTimeTile label="RA/game" value={ALL_TIME.raPerG.toFixed(1)} />
           <AllTimeTile label="Seasons" value={String(SEASON_RECORDS.length)} />
         </div>
         <div className="rounded-lg border border-field-line bg-field-paper p-3">

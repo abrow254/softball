@@ -3,7 +3,7 @@ import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import { SeasonPhotoBanner } from '@/components/SeasonPhotoBanner'
 import { photoForSeason } from '@/lib/teamPhotos'
-import { SEASON_RECORDS, recordForSeason } from '@/lib/seasonRecords'
+import { SEASON_RECORDS, recordForSeason, isChampionSeason } from '@/lib/seasonRecords'
 import type { Season } from '@/lib/types'
 
 function RecordTile({ label, value }: { label: string; value: string }) {
@@ -102,6 +102,7 @@ export default async function StatsPage({
         : null
 
   const fmtPct = (n: number) => n.toFixed(3).replace(/^0/, '')
+  const isChampion = selectedSeason ? isChampionSeason(selectedSeason.year, selectedSeason.term) : false
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
@@ -109,6 +110,16 @@ export default async function StatsPage({
         <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Season stats</h1>
         <SeasonSelector seasons={seasons} selectedId={selectedId} />
       </div>
+
+      {isChampion && (
+        <div className="flex items-center gap-3 rounded-lg border border-field-gold/50 bg-field-gold/15 px-4 py-3">
+          <span className="text-2xl" aria-hidden>🏆</span>
+          <div>
+            <div className="font-semibold text-field-ink">League Champions</div>
+            <div className="text-xs text-field-muted">{selectedSeason?.label} — first place</div>
+          </div>
+        </div>
+      )}
 
       {/* Photo on one side, record stacked on the other */}
       {(photo || summary) && (
