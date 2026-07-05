@@ -120,6 +120,14 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
           <span className="text-sm text-field-muted">
             {career.seasons_played} {career.seasons_played === 1 ? 'season' : 'seasons'} · {career.ab} career AB
           </span>
+          {seasons.length > 0 && (
+            <Link
+              href={`/players/${params.id}/card`}
+              className="ml-auto rounded-md border border-field-line-strong px-3 py-1 text-xs font-medium text-field-ink hover:bg-field-cream"
+            >
+              🖼️ Season card
+            </Link>
+          )}
         </div>
       </div>
 
