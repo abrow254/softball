@@ -15,6 +15,7 @@ const PUBLIC_LINKS: NavLink[] = [
   { href: '/standings', label: 'Standings' },
   { href: '/stats', label: 'Stats' },
   { href: '/awards', label: 'Awards' },
+  { href: '/opponents', label: 'Rivals' },
   { href: '/players', label: 'All-Time' },
 ]
 
