@@ -16,7 +16,7 @@
 //            slotValue), so the OBP/SLG slot blends drive who lands where.
 //            Best across all patterns is the global optimum.
 
-import { FIELDING_POSITIONS } from '@/lib/positions'
+import { FIELDING_POSITIONS, POSITION_PRIORITY } from '@/lib/positions'
 
 export interface SlotConfig {
   role: string
@@ -311,12 +311,17 @@ function isCyclicLegal(pattern: number[]): boolean {
 
 // ---- Defensive alignment ----------------------------------------------------
 
-// Assign players to the 9 fielding positions, respecting eligibility and using
-// each player's position list as a depth chart (earlier = primary, preferred).
+// Assign players to fielding positions, respecting eligibility and using each
+// player's position list as a depth chart (earlier = primary, preferred).
 // Bipartite max-cardinality matching (Kuhn) with candidates visited in
-// depth-chart order so people land at their primary spot when possible. Players
-// left unfilled (more batters than field spots) get 'DH'. A player with an
-// empty position list is treated as eligible for any spot (no preference).
+// depth-chart order so people land at their primary spot when possible.
+//
+// Short-handed: positions are FILLED in POSITION_PRIORITY order, so when there
+// aren't enough fielders for all 9 spots, the lowest-priority positions (Rover,
+// then 2B) are the ones left unmanned — preserving the outfield + corners + SS,
+// the recommended slo-pitch 7-player defense. Augmenting keeps the match size
+// maximal, so a high-priority spot is skipped only when eligibility makes it
+// unstaffable. Players not assigned a position (extra batters) get 'DH'.
 export function assignPositions(
   realOrder: string[],
   eligibilityById: Map<string, string[]>,
@@ -341,8 +346,13 @@ export function assignPositions(
       .sort((a, b) => rank(a, pos) - rank(b, pos)),
   )
 
-  // Fill the scarcest positions first to maximize coverage.
-  const posOrder = positions.map((_, i) => i).sort((a, b) => candidates[a].length - candidates[b].length)
+  // Fill positions in defensive-priority order so short-handed drops the
+  // least-valuable spots first.
+  const prio = (pos: string) => {
+    const i = POSITION_PRIORITY.indexOf(pos as (typeof POSITION_PRIORITY)[number])
+    return i < 0 ? POSITION_PRIORITY.length : i
+  }
+  const posOrder = positions.map((_, i) => i).sort((a, b) => prio(positions[a]) - prio(positions[b]))
 
   const posMatch = new Map<number, string>()
   const playerMatch = new Map<string, number>()
