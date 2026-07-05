@@ -48,7 +48,6 @@ export function PhotoUpload({ onExtracted }: { onExtracted: (card: ExtractedCard
           ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
-          capture="environment"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
