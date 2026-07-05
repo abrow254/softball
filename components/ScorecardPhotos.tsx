@@ -64,7 +64,6 @@ export function ScorecardPhotos({
               ref={fileRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={onPick}
               className="hidden"
             />
