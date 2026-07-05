@@ -26,9 +26,11 @@ const MILESTONES: MilestoneConfig[] = [
   { emoji: '🏏', noun: 'Hits', tiers: [50, 100, 250, 500], value: (c) => c.hits },
   { emoji: '💣', noun: 'HR', tiers: [10, 25, 50, 100], value: (c) => c.hr },
   { emoji: '🧱', noun: 'TB', tiers: [100, 250, 500, 1000], value: (c) => c.tb },
+  { emoji: '🏃', noun: 'Runs', tiers: [50, 100, 200, 400], value: (c) => c.runs },
   { emoji: '🎮', noun: 'Games', tiers: [25, 50, 100, 150], value: (c) => c.gp },
   { emoji: '🏆', noun: 'RBI', tiers: [50, 100, 250], value: (c) => c.rbi },
   { emoji: '🐦', noun: 'PotG', tiers: [1, 5, 10, 25], value: (_c, potg) => potg },
+  { emoji: '🎗️', noun: 'Seasons', tiers: [3, 5, 8, 12], value: (c) => c.seasons_played },
 ]
 
 // Earned badges (highest tier reached per category) + the next target per

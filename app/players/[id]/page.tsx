@@ -7,9 +7,11 @@ import {
   getPlayerPotgCount,
   getPlayerBadges,
   getBattingOrderStats,
+  getPlayerAccolades,
 } from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
 import { Tile } from '@/components/Tile'
+import { TrophyCase } from '@/components/TrophyCase'
 import { OpsChart } from '@/components/OpsChart'
 import { PLAYER_SEASON_COLS } from '@/lib/statColumns'
 import { fmt3, fmtPct } from '@/lib/formulas'
@@ -96,11 +98,12 @@ function GameLogTable({ entries }: { entries: PlayerGameLogEntry[] }) {
 export default async function PlayerCareerPage({ params }: { params: { id: string } }) {
   const currentSeason = await getCurrentSeason()
 
-  const [{ career, seasons }, gameLog, potgCount, byOrder] = await Promise.all([
+  const [{ career, seasons }, gameLog, potgCount, byOrder, accolades] = await Promise.all([
     getPlayerCareer(params.id),
     currentSeason ? getPlayerGameLog(params.id, currentSeason.id) : Promise.resolve([]),
     getPlayerPotgCount(params.id),
     getBattingOrderStats(params.id),
+    getPlayerAccolades(params.id),
   ])
   if (!career) notFound()
 
@@ -164,6 +167,8 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
           )}
         </section>
       )}
+
+      <TrophyCase accolades={accolades} />
 
       {seasons.length >= 2 && (
         <section>
