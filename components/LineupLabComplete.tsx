@@ -9,6 +9,8 @@ import { OpponentScouting } from '@/components/OpponentScouting'
 import { AlignmentBuilder } from '@/components/AlignmentBuilder'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
+import { PollImport } from '@/components/PollImport'
+import type { PollAssignment } from '@/lib/pollImport'
 import { setAvailabilityAction, saveLineupForMatchAction } from '@/app/lineup/actions'
 
 type CardTarget = 'lineup' | 'scorecard'
@@ -75,6 +77,8 @@ export function LineupLabComplete({
   // or availability changes.
   const labKey = `${selectedDate}|${availablePlayers.map((p) => p.player_id).sort().join(',')}`
 
+  const [showPollImport, setShowPollImport] = useState(false)
+
   async function toggleAvailability(playerId: string, status: AvailabilityStatus) {
     if (!selectedDate) return
     setAvailability((prev) => {
@@ -87,6 +91,20 @@ export function LineupLabComplete({
     } catch {
       // best-effort; the optimistic state stays
     }
+  }
+
+  // Apply a parsed poll: update the availability map in one pass, then persist
+  // each assignment (best-effort).
+  async function applyPoll(assignments: PollAssignment[]) {
+    if (!selectedDate) return
+    setAvailability((prev) => {
+      const next = new Map(prev)
+      for (const a of assignments) next.set(a.player_id, a.status)
+      return next
+    })
+    await Promise.allSettled(
+      assignments.map((a) => setAvailabilityAction(selectedSeasonId, selectedDate, a.player_id, a.status)),
+    )
   }
 
   function handlePositionChange(playerId: string, pos: string) {
@@ -204,6 +222,23 @@ export function LineupLabComplete({
           <summary className="cursor-pointer text-sm font-semibold text-field-ink">
             Availability · {availablePlayers.length} in
           </summary>
+          <div className="mt-2">
+            {showPollImport ? (
+              <PollImport
+                roster={players.map((p) => ({ player_id: p.player_id, name: p.name }))}
+                onApply={applyPoll}
+                onClose={() => setShowPollImport(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowPollImport(true)}
+                className="rounded-md border border-field-line-strong px-3 py-1.5 text-xs font-medium text-field-ink hover:bg-field-cream"
+              >
+                📋 Paste from poll
+              </button>
+            )}
+          </div>
           <ul className="mt-2 space-y-1">
             {players.map((p) => {
               const status = availability.get(p.player_id) ?? 'in'
