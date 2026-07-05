@@ -25,24 +25,27 @@ export interface SlotConfig {
   b: number  // SLG emphasis
 }
 
-// Slots 1–5 keep the spec's leverage stances (best hitter 2nd, de-weighted
-// 3-hole, SLG-heavy cleanup — per The Book). Slots 6+ decline gently: in a
-// 7-inning cycling lineup the real cost of a lower slot is just fewer PAs
-// (~25% from top to 11th), so steep weights would exaggerate lineup-score
-// deltas without changing the order's shape.
+// Weights decline MONOTONICALLY down the order — in a cycling lineup the
+// dominant factor is PA count (a 3rd-slot hitter bats far more than a 7th), so a
+// higher slot must always be worth at least as much as a lower one. The Book's
+// leverage flavor (best hitter 2nd, slight 3-hole de-emphasis, SLG-heavy
+// cleanup) lives only as SMALL wiggles inside the top band + the a/b blends;
+// the top five slots all sit above every bottom slot so weak hitters sort to
+// the bottom, never the 3-hole. Decline ~1.00→0.72 over 8 ≈ the real ~25% PA
+// falloff, so scores don't exaggerate.
 const BASE_SLOTS: SlotConfig[] = [
   { role: 'Leadoff', w: 1.00, a: 0.65, b: 0.35 },
-  { role: '2-hole',  w: 1.05, a: 0.58, b: 0.42 },
-  { role: '3-hole',  w: 0.80, a: 0.50, b: 0.50 },
-  { role: 'Cleanup', w: 1.00, a: 0.40, b: 0.60 },
+  { role: '2-hole',  w: 1.00, a: 0.58, b: 0.42 },
+  { role: '3-hole',  w: 0.94, a: 0.50, b: 0.50 },
+  { role: 'Cleanup', w: 0.97, a: 0.40, b: 0.60 },
   { role: '5-hole',  w: 0.90, a: 0.45, b: 0.55 },
-  { role: '6-hole',  w: 0.88, a: 0.55, b: 0.45 },
-  { role: '7-hole',  w: 0.84, a: 0.50, b: 0.50 },
-  { role: '8-hole',  w: 0.80, a: 0.50, b: 0.50 },
+  { role: '6-hole',  w: 0.84, a: 0.55, b: 0.45 },
+  { role: '7-hole',  w: 0.78, a: 0.50, b: 0.50 },
+  { role: '8-hole',  w: 0.72, a: 0.50, b: 0.50 },
 ]
 
-// Extended weights for slots 9+ — PA-proportional gentle decline.
-const EXTENDED_WEIGHTS = [0.76, 0.72, 0.68, 0.65, 0.62, 0.59, 0.56, 0.53]
+// Extended weights for slots 9+ — continue the gentle monotonic decline.
+const EXTENDED_WEIGHTS = [0.67, 0.63, 0.59, 0.56, 0.53, 0.50, 0.47, 0.44]
 
 export function getSlotConfigs(n: number): SlotConfig[] {
   return Array.from({ length: n }, (_, i) => {
@@ -51,7 +54,7 @@ export function getSlotConfigs(n: number): SlotConfig[] {
     const w =
       extIdx < EXTENDED_WEIGHTS.length
         ? EXTENDED_WEIGHTS[extIdx]
-        : Math.max(0.50, 0.53 - 0.03 * (extIdx - EXTENDED_WEIGHTS.length + 1))
+        : Math.max(0.35, 0.44 - 0.03 * (extIdx - EXTENDED_WEIGHTS.length + 1))
     return { role: `${i + 1}-hole`, w, a: 0.50, b: 0.50 }
   })
 }
