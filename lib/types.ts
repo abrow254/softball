@@ -34,6 +34,8 @@ export interface Game {
   our_runs: number | null
   opp_runs: number | null
   is_aggregate: boolean
+  is_forfeit: boolean
+  forfeit_won: boolean | null
   potg_player_id: string | null
   potg_score: number | null
   created_at: string

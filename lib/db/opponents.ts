@@ -23,10 +23,11 @@ export interface OpponentGame {
   game_id: string
   season_label: string
   game_date: string | null
-  our_runs: number
-  opp_runs: number
+  our_runs: number | null
+  opp_runs: number | null
   opponent_raw: string
   result: 'W' | 'L' | 'D'
+  forfeit: boolean
 }
 
 export interface OpponentDetail {
@@ -44,25 +45,33 @@ type RawGame = {
   opponent: string | null
   our_runs: number | null
   opp_runs: number | null
+  is_forfeit: boolean
+  forfeit_won: boolean | null
 }
 
-const resultOf = (our: number, opp: number): 'W' | 'L' | 'D' =>
-  our > opp ? 'W' : our < opp ? 'L' : 'D'
+// Result of one game: forfeits carry a known W/L; scored games compare runs.
+const resultOf = (g: RawGame): 'W' | 'L' | 'D' => {
+  if (g.is_forfeit) return g.forfeit_won ? 'W' : 'L'
+  const our = g.our_runs!
+  const opp = g.opp_runs!
+  return our > opp ? 'W' : our < opp ? 'L' : 'D'
+}
 
 async function loadGames(): Promise<{ games: RawGame[]; seasonLabel: Map<string, string> }> {
   const supabase = createClient()
   const [gamesRes, seasonsRes] = await Promise.all([
     supabase
       .from('games')
-      .select('id, season_id, game_date, opponent, our_runs, opp_runs')
+      .select('id, season_id, game_date, opponent, our_runs, opp_runs, is_forfeit, forfeit_won')
       .eq('is_aggregate', false),
     supabase.from('seasons').select('id, label'),
   ])
   if (gamesRes.error) throw new Error(gamesRes.error.message)
   if (seasonsRes.error) throw new Error(seasonsRes.error.message)
 
+  // Keep games with a known result: a recorded score, or a forfeit flag.
   const games = (gamesRes.data ?? []).filter(
-    (g) => g.opponent && g.our_runs != null && g.opp_runs != null,
+    (g) => g.opponent && (g.is_forfeit || (g.our_runs != null && g.opp_runs != null)),
   ) as RawGame[]
   const seasonLabel = new Map((seasonsRes.data ?? []).map((s) => [s.id, s.label as string]))
   return { games, seasonLabel }
@@ -95,9 +104,12 @@ export async function getOpponentRecords(): Promise<OpponentRecord[]> {
     if (!groups.has(key)) groups.set(key, { raw: new Map(), games: [], rf: 0, ra: 0 })
     const grp = groups.get(key)!
     grp.raw.set(g.opponent!, (grp.raw.get(g.opponent!) ?? 0) + 1)
-    grp.games.push({ date: g.game_date, res: resultOf(g.our_runs!, g.opp_runs!) })
-    grp.rf += g.our_runs!
-    grp.ra += g.opp_runs!
+    grp.games.push({ date: g.game_date, res: resultOf(g) })
+    // Forfeits have no runs — they count in the W/L but not in RS/RA.
+    if (!g.is_forfeit) {
+      grp.rf += g.our_runs!
+      grp.ra += g.opp_runs!
+    }
   }
 
   const records: OpponentRecord[] = []
@@ -152,10 +164,11 @@ export async function getOpponentDetail(key: string): Promise<OpponentDetail | n
       game_id: g.id,
       season_label: seasonLabel.get(g.season_id) ?? '—',
       game_date: g.game_date,
-      our_runs: g.our_runs!,
-      opp_runs: g.opp_runs!,
+      our_runs: g.is_forfeit ? null : g.our_runs,
+      opp_runs: g.is_forfeit ? null : g.opp_runs,
       opponent_raw: g.opponent!,
-      result: resultOf(g.our_runs!, g.opp_runs!),
+      result: resultOf(g),
+      forfeit: g.is_forfeit,
     }))
     .sort((a, b) => (b.game_date ?? '').localeCompare(a.game_date ?? ''))
 

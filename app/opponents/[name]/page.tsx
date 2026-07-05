@@ -79,7 +79,7 @@ export default async function OpponentDetailPage({ params }: { params: { name: s
                   </td>
                   <td className="px-2 py-2 text-field-muted">{g.season_label}</td>
                   <td className="px-2 py-2 text-center tabular font-semibold text-field-ink">
-                    {g.our_runs}–{g.opp_runs}
+                    {g.forfeit ? <span className="text-xs font-medium text-field-muted">Forfeit</span> : `${g.our_runs}–${g.opp_runs}`}
                   </td>
                   <td className={`px-2 py-2 text-center font-bold ${RESULT_CLASS[g.result]}`}>{g.result}</td>
                 </tr>

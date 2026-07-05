@@ -127,7 +127,7 @@ export async function getRecords(): Promise<RecordsResult> {
     supabase.from('seasons').select('id, label'),
     supabase
       .from('games')
-      .select('season_id, game_date, opponent, our_runs, opp_runs, potg_player_id, is_aggregate')
+      .select('season_id, game_date, opponent, our_runs, opp_runs, potg_player_id, is_aggregate, is_forfeit, forfeit_won')
       .eq('is_aggregate', false),
     supabase.from('players').select('id, name'),
   ])
@@ -195,12 +195,19 @@ export async function getRecords(): Promise<RecordsResult> {
       value: String(byRuns.our_runs),
       detail: `vs ${byRuns.opponent ?? '—'} · ${byRuns.game_date}`,
     })
-    // Longest win streak (chronological across all seasons)
-    const chrono = [...games].sort((a, b) => a.game_date.localeCompare(b.game_date))
+    // Longest win streak (chronological across all seasons). Include forfeit
+    // results — a forfeit win keeps a streak alive even with no runs.
+    const streakGames = (gamesRes.data ?? [])
+      .filter((g) => g.game_date && (g.is_forfeit || (g.our_runs != null && g.opp_runs != null)))
+      .map((g) => ({
+        game_date: g.game_date as string,
+        won: g.is_forfeit ? g.forfeit_won === true : (g.our_runs as number) > (g.opp_runs as number),
+      }))
+      .sort((a, b) => a.game_date.localeCompare(b.game_date))
     let run = 0
     let max = 0
-    for (const g of chrono) {
-      run = g.our_runs > g.opp_runs ? run + 1 : 0
+    for (const g of streakGames) {
+      run = g.won ? run + 1 : 0
       max = Math.max(max, run)
     }
     if (max >= 2) team.push({ label: 'Longest win streak', value: `${max} games` })
