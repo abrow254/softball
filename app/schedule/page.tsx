@@ -155,11 +155,14 @@ export default async function SchedulePage() {
     return g
   })
 
-  // Append entered games that don't line up with any scheduled row (by date), so
-  // a game you logged still shows even if the scrape doesn't list it.
+  // Append entered games only when the scrape lists neither the date nor the
+  // opponent — a genuinely off-schedule game. If the opponent already appears
+  // in the schedule, the score was folded into that row above, so appending
+  // here would duplicate it.
   const scheduledDates = new Set(schedule.map((g) => g.date))
+  const scheduledOpponents = new Set(schedule.map((g) => normOpp(g.opponent)))
   for (const d of dbScored) {
-    if (scheduledDates.has(d.date)) continue
+    if (scheduledDates.has(d.date) || scheduledOpponents.has(normOpp(d.opponent))) continue
     merged.push({
       date: d.date,
       time: null,
