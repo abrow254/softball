@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { listSeasons, getCurrentSeason, listGames, getSeasonStats } from '@/lib/db'
 import { SeasonSelector } from '@/components/SeasonSelector'
+import { DeleteGameButton } from '@/components/DeleteGameButton'
 import { gameResult } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -115,6 +116,11 @@ export default async function GamesPage({ searchParams }: { searchParams: { seas
                       <Link href={`/games/${g.id}/card`} className="text-field-grass hover:underline">
                         Card
                       </Link>
+                      <span className="px-1 text-field-line-strong">·</span>
+                      <DeleteGameButton
+                        gameId={g.id}
+                        label={`${g.game_date ?? 'no date'} ${g.opponent ?? ''}`.trim()}
+                      />
                     </td>
                   </tr>
                 )

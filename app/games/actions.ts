@@ -56,6 +56,8 @@ export async function deleteGameAction(gameId: string): Promise<void> {
   if (error) throw new Error(error.message)
   revalidatePath('/stats')
   revalidatePath('/games')
+  revalidatePath('/schedule')
+  revalidatePath('/')
 }
 
 // Upload a scorecard photo for a game (admin-only). Accepts a FormData 'file'.

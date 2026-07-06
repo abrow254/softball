@@ -64,11 +64,21 @@ export default async function SchedulePage() {
     gameId: string
     potgName: string | null
     potgLine: string | null
+    ourScore: number | null
+    oppScore: number | null
   }
   const gamesByDate = new Map<string, GameInfo>()
   const gamesByOpponent = new Map<string, GameInfo>()
   const normOpp = (s: string | null | undefined) =>
     (s ?? '').toLowerCase().replace(/^the\s+/, '').replace(/\s+/g, ' ').trim()
+  // A scored entry always wins over an unscored one (handles duplicate rows
+  // where one has the box score and the other is empty).
+  const setInfo = (map: Map<string, GameInfo>, key: string, info: GameInfo) => {
+    const ex = map.get(key)
+    if (!ex || (info.ourScore != null && ex.ourScore == null)) map.set(key, info)
+  }
+  // Real DB games that carry a score, for folding into the scraped schedule.
+  const dbScored: { date: string; opponent: string; ourScore: number; oppScore: number }[] = []
 
   if (currentSeason && schedule) {
     const games = await listGames(currentSeason.id)
@@ -99,9 +109,12 @@ export default async function SchedulePage() {
         }
       }
 
-      const info: GameInfo = { gameId: g.id, potgName, potgLine }
-      if (g.game_date) gamesByDate.set(g.game_date, info)
-      if (g.opponent) gamesByOpponent.set(normOpp(g.opponent), info)
+      const info: GameInfo = { gameId: g.id, potgName, potgLine, ourScore: g.our_runs, oppScore: g.opp_runs }
+      if (g.game_date) setInfo(gamesByDate, g.game_date, info)
+      if (g.opponent) setInfo(gamesByOpponent, normOpp(g.opponent), info)
+      if (g.game_date && g.opponent && g.our_runs != null && g.opp_runs != null) {
+        dbScored.push({ date: g.game_date, opponent: g.opponent, ourScore: g.our_runs, oppScore: g.opp_runs })
+      }
     }
   }
 
@@ -131,8 +144,35 @@ export default async function SchedulePage() {
     }
   }
 
-  const played = schedule.filter((g) => g.played)
-  const upcoming = schedule.filter((g) => !g.played && g.date >= today)
+  // Fold entered DB results into the scraped schedule: if a scheduled game has
+  // no score yet but we've entered one, show ours (and mark it played).
+  const merged: ScheduleGame[] = schedule.map((g) => {
+    if (g.played && g.ourScore != null && g.oppScore != null) return g
+    const info = gamesByDate.get(g.date) ?? gamesByOpponent.get(normOpp(g.opponent))
+    if (info && info.ourScore != null && info.oppScore != null) {
+      return { ...g, played: true, ourScore: info.ourScore, oppScore: info.oppScore }
+    }
+    return g
+  })
+
+  // Append entered games that don't line up with any scheduled row (by date), so
+  // a game you logged still shows even if the scrape doesn't list it.
+  const scheduledDates = new Set(schedule.map((g) => g.date))
+  for (const d of dbScored) {
+    if (scheduledDates.has(d.date)) continue
+    merged.push({
+      date: d.date,
+      time: null,
+      opponent: d.opponent,
+      isHome: false,
+      ourScore: d.ourScore,
+      oppScore: d.oppScore,
+      played: true,
+    })
+  }
+
+  const played = merged.filter((g) => g.played).sort((a, b) => a.date.localeCompare(b.date))
+  const upcoming = merged.filter((g) => !g.played && g.date >= today).sort((a, b) => a.date.localeCompare(b.date))
 
   // Derive our record from played games.
   let w = 0,
