@@ -73,7 +73,13 @@ export async function getSeasonAwards(seasonId: string): Promise<SeasonAwardsRes
   if (seasonsRes.error) throw new Error(seasonsRes.error.message)
 
   const allRows = (ssRes.data ?? []) as SeasonStatRow[]
-  const seasons = (seasonsRes.data ?? []) as Season[]
+  // Chronological order — Summer before Fall within a year. The SQL `order by
+  // term` sorts alphabetically (Fall < Summer), which is backwards and would
+  // make "the player's prior season" wrong for the Most Improved award.
+  const TERM_ORDER: Record<string, number> = { Summer: 0, Fall: 1 }
+  const seasons = [...((seasonsRes.data ?? []) as Season[])].sort(
+    (a, b) => a.year - b.year || (TERM_ORDER[a.term] ?? 0) - (TERM_ORDER[b.term] ?? 0),
+  )
   const season = seasons.find((s) => s.id === seasonId) ?? null
 
   if (allRows.length === 0) return { awards: [], qualified: [], all: [], season }
