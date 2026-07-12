@@ -144,11 +144,13 @@ export default async function SchedulePage() {
     }
   }
 
-  // Fold entered DB results into the scraped schedule: if a scheduled game has
-  // no score yet but we've entered one, show ours (and mark it played).
+  // Fold entered DB results into the scraped schedule by EXACT DATE only. Do
+  // NOT match by opponent: a future rematch against a team we already played
+  // would otherwise inherit the old score and be wrongly marked "played",
+  // dropping it from Upcoming.
   const merged: ScheduleGame[] = schedule.map((g) => {
     if (g.played && g.ourScore != null && g.oppScore != null) return g
-    const info = gamesByDate.get(g.date) ?? gamesByOpponent.get(normOpp(g.opponent))
+    const info = gamesByDate.get(g.date)
     if (info && info.ourScore != null && info.oppScore != null) {
       return { ...g, played: true, ourScore: info.ourScore, oppScore: info.oppScore }
     }
@@ -156,13 +158,15 @@ export default async function SchedulePage() {
   })
 
   // Append entered games only when the scrape lists neither the date nor the
-  // opponent — a genuinely off-schedule game. If the opponent already appears
-  // in the schedule, the score was folded into that row above, so appending
-  // here would duplicate it.
+  // opponent — a genuinely off-schedule game. Dedupe by opponent so duplicate
+  // entries (e.g. the same game logged twice on different dates) show once.
   const scheduledDates = new Set(schedule.map((g) => g.date))
   const scheduledOpponents = new Set(schedule.map((g) => normOpp(g.opponent)))
+  const appended = new Set<string>()
   for (const d of dbScored) {
-    if (scheduledDates.has(d.date) || scheduledOpponents.has(normOpp(d.opponent))) continue
+    const key = normOpp(d.opponent)
+    if (scheduledDates.has(d.date) || scheduledOpponents.has(key) || appended.has(key)) continue
+    appended.add(key)
     merged.push({
       date: d.date,
       time: null,
@@ -245,7 +249,7 @@ export default async function SchedulePage() {
           <ul className="divide-y divide-field-line overflow-hidden rounded-lg border border-field-line">
             {played.map((g) => {
               const res = resultOf(g)
-              const info = gamesByDate.get(g.date) ?? gamesByOpponent.get(normOpp(g.opponent))
+              const info = gamesByDate.get(g.date)
               const gameLink = info?.gameId ? `/games/${info.gameId}/card` : null
 
               const details = (
