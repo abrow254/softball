@@ -7,6 +7,8 @@ import type { OppAnalysis } from '@/lib/opponentScouting'
 import { LineupLab } from '@/components/LineupLab'
 import { OpponentScouting } from '@/components/OpponentScouting'
 import { AlignmentBuilder } from '@/components/AlignmentBuilder'
+import { ShiftAlignments } from '@/components/ShiftAlignments'
+import { isFieldingPosition } from '@/lib/positions'
 import { BattingLineupCard, type LineupCardRow } from '@/components/BattingLineupCard'
 import { PrintableCard, type PrintableCardRow } from '@/components/PrintableCard'
 import { PollImport } from '@/components/PollImport'
@@ -149,11 +151,19 @@ export function LineupLabComplete({
   const alignmentEntries = useMemo(
     () =>
       order.map((id) => ({
+        id,
         name: playerMap.get(id)?.name ?? 'Unknown',
         pos: positions.get(id) || '',
         eligible: playerMap.get(id)?.positions ?? [],
       })),
     [order, positions, playerMap],
+  )
+
+  // Fielders (players with an assigned fielding position) for the drag-and-drop
+  // defensive shifts.
+  const fielders = useMemo(
+    () => alignmentEntries.filter((e) => isFieldingPosition(e.pos)).map((e) => ({ id: e.id, name: e.name, pos: e.pos })),
+    [alignmentEntries],
   )
 
   const cardTitle = selectedMatch?.opponent ? `v. ${selectedMatch.opponent}` : 'The Softball Team'
@@ -351,6 +361,13 @@ export function LineupLabComplete({
             <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Defensive alignment</h2>
             <AlignmentBuilder entries={alignmentEntries} />
           </section>
+
+          {/* ---- Drag-and-drop defensive shifts (RHB / LHB) ---- */}
+          {fielders.length > 0 && (
+            <section className="space-y-2">
+              <ShiftAlignments fielders={fielders} dateKey={selectedDate || 'lineup'} />
+            </section>
+          )}
 
           {/* ---- Save + Export ---- */}
           <section className="flex flex-wrap items-center gap-3">
