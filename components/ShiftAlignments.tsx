@@ -22,18 +22,38 @@ export interface Fielder {
   pos: string // assigned fielding position ('' if none)
 }
 
+type Side = 'RHB' | 'LHB'
+
 const firstName = (n: string) => n.split(' ')[0]
 
-// Seed a fresh arrangement from each fielder's assigned position; players with
-// no position get spread along the bottom so they can be dragged into place.
-function seed(fielders: Fielder[]): Record<string, { x: number; y: number }> {
+// How far each position shades toward the batter's pull side by default. A
+// right-handed batter pulls to left field (lower x), a lefty to right field
+// (higher x); outfielders shade more than infielders.
+const SHADE: Record<string, number> = {
+  LF: 0.1,
+  CF: 0.12,
+  RF: 0.1,
+  Rover: 0.08,
+  SS: 0.05,
+  '2B': 0.05,
+  '3B': 0.04,
+  '1B': 0.04,
+  C: 0,
+}
+const clamp = (v: number) => Math.min(0.95, Math.max(0.05, v))
+
+// Seed a fresh arrangement from each fielder's position, pre-shaded for the
+// batter's handedness so the two fields start meaningfully different. Players
+// with no position get spread along the bottom to be dragged into place.
+function seed(fielders: Fielder[], side: Side): Record<string, { x: number; y: number }> {
+  const dir = side === 'RHB' ? -1 : 1 // pull side: righties left, lefties right
   const out: Record<string, { x: number; y: number }> = {}
   let bench = 0
   const benchCount = fielders.filter((f) => !SPOT_N[f.pos]).length
   for (const f of fielders) {
     const spot = SPOT_N[f.pos]
     if (spot) {
-      out[f.id] = { ...spot }
+      out[f.id] = { x: clamp(spot.x + dir * (SHADE[f.pos] ?? 0.05)), y: spot.y }
     } else {
       const span = benchCount > 1 ? bench / (benchCount - 1) : 0.5
       out[f.id] = { x: 0.15 + span * 0.7, y: 0.985 }
@@ -43,11 +63,11 @@ function seed(fielders: Fielder[]): Record<string, { x: number; y: number }> {
   return out
 }
 
-function Field({ title, sideKey, fielders, dateKey }: { title: string; sideKey: string; fielders: Fielder[]; dateKey: string }) {
+function Field({ title, sideKey, fielders, dateKey }: { title: string; sideKey: Side; fielders: Fielder[]; dateKey: string }) {
   const storageKey = `shift:${dateKey}:${sideKey}`
   const fieldRef = useRef<HTMLDivElement>(null)
   const dragId = useRef<string | null>(null)
-  const [pos, setPos] = useState<Record<string, { x: number; y: number }>>(() => seed(fielders))
+  const [pos, setPos] = useState<Record<string, { x: number; y: number }>>(() => seed(fielders, sideKey))
 
   // Load any saved arrangement for this date/side; keep only current fielders,
   // and seed any newcomers. Runs when the roster of fielders or the date changes.
@@ -59,7 +79,7 @@ function Field({ title, sideKey, fielders, dateKey }: { title: string; sideKey: 
     } catch {
       /* ignore */
     }
-    const fresh = seed(fielders)
+    const fresh = seed(fielders, sideKey)
     const merged: Record<string, { x: number; y: number }> = {}
     for (const f of fielders) merged[f.id] = saved[f.id] ?? fresh[f.id]
     setPos(merged)
@@ -94,7 +114,7 @@ function Field({ title, sideKey, fielders, dateKey }: { title: string; sideKey: 
     })
   }
   function reset() {
-    const fresh = seed(fielders)
+    const fresh = seed(fielders, sideKey)
     setPos(fresh)
     persist(fresh)
   }
@@ -152,7 +172,8 @@ export function ShiftAlignments({ fielders, dateKey }: { fielders: Fielder[]; da
       <div>
         <h3 className="text-sm font-semibold text-field-ink">Defensive shifts</h3>
         <p className="text-xs text-field-muted">
-          Drag fielders to shade for the batter at the plate. Saved on this device per game.
+          Pre-shaded for the pull side — righties toward left field, lefties toward right. Drag to fine-tune;
+          saved on this device per game.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
