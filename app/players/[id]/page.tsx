@@ -8,6 +8,8 @@ import {
   getPlayerBadges,
   getBattingOrderStats,
   getPlayerAccolades,
+  getCareerWar,
+  getPlayerSeasonWar,
 } from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
 import { Tile } from '@/components/Tile'
@@ -98,16 +100,22 @@ function GameLogTable({ entries }: { entries: PlayerGameLogEntry[] }) {
 export default async function PlayerCareerPage({ params }: { params: { id: string } }) {
   const currentSeason = await getCurrentSeason()
 
-  const [{ career, seasons }, gameLog, potgCount, byOrder, accolades] = await Promise.all([
-    getPlayerCareer(params.id),
-    currentSeason ? getPlayerGameLog(params.id, currentSeason.id) : Promise.resolve([]),
-    getPlayerPotgCount(params.id),
-    getBattingOrderStats(params.id),
-    getPlayerAccolades(params.id),
-  ])
+  const [{ career, seasons }, gameLog, potgCount, byOrder, accolades, careerWarRows, seasonWar] =
+    await Promise.all([
+      getPlayerCareer(params.id),
+      currentSeason ? getPlayerGameLog(params.id, currentSeason.id) : Promise.resolve([]),
+      getPlayerPotgCount(params.id),
+      getBattingOrderStats(params.id),
+      getPlayerAccolades(params.id),
+      getCareerWar(),
+      getPlayerSeasonWar(params.id),
+    ])
   if (!career) notFound()
 
   const badges = getPlayerBadges(career, potgCount)
+  const careerWar = careerWarRows.find((r) => r.player_id === params.id)?.war
+  // Attach per-season bWAR so the season-by-season table's bWAR column renders.
+  const seasonsWithWar = seasons.map((s) => ({ ...s, war: seasonWar.get(s.season_id) }))
 
   return (
     <div className="space-y-8">
@@ -140,6 +148,13 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
           {tiles(career).map((t) => (
             <Tile key={t.label} {...t} />
           ))}
+          {careerWar != null && (
+            <Tile
+              label="bWAR"
+              value={careerWar.toFixed(1)}
+              title="Batting WAR — offense-only wins above a replacement hitter, scaled to our run environment"
+            />
+          )}
         </div>
       </section>
 
@@ -180,7 +195,7 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
       <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Season by season</h2>
         <StatTable
-          rows={seasons}
+          rows={seasonsWithWar}
           cols={PLAYER_SEASON_COLS}
           defaultSortKey="year"
           defaultDir="asc"

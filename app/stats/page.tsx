@@ -1,4 +1,4 @@
-import { listSeasons, getCurrentSeason, getSeasonStats, listGames } from '@/lib/db'
+import { listSeasons, getCurrentSeason, getSeasonWar, listGames } from '@/lib/db'
 import { StatsGrid } from '@/components/StatsGrid'
 import { SeasonSelector } from '@/components/SeasonSelector'
 import { SeasonPhotoBanner } from '@/components/SeasonPhotoBanner'
@@ -64,7 +64,7 @@ export default async function StatsPage({
   // Player stats + live record only for real (DB) seasons.
   const [rows, games] = isRegistryOnly
     ? [[], []]
-    : await Promise.all([getSeasonStats(selectedId), listGames(selectedId)])
+    : await Promise.all([getSeasonWar(selectedId), listGames(selectedId)])
 
   let w = 0, l = 0, d = 0, rf = 0, ra = 0, gp = 0
   for (const g of games) {

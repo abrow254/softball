@@ -1,4 +1,4 @@
-import { getCareerStats, getRecords } from '@/lib/db'
+import { getCareerWar, getRecords } from '@/lib/db'
 import { StatTable } from '@/components/StatTable'
 import { RecordsPanel } from '@/components/RecordsPanel'
 import { TeamTrendChart } from '@/components/TeamTrendChart'
@@ -19,11 +19,17 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All-Time Stats — The Softball Team' }
 
 export default async function AllTimePage() {
-  const [rows, records] = await Promise.all([getCareerStats(), getRecords()])
+  const [rows, records] = await Promise.all([getCareerWar(), getRecords()])
 
   const ironMan = [...rows]
     .filter((r) => r.gp > 0)
     .sort((a, b) => b.gp - a.gp || b.seasons_played - a.seasons_played || a.name.localeCompare(b.name))
+    .slice(0, 12)
+
+  // bWAR leaders (offense only). Qualified 30+ career AB, matching the table.
+  const warLeaders = [...rows]
+    .filter((r) => r.ab >= 30 && r.war != null)
+    .sort((a, b) => (b.war ?? 0) - (a.war ?? 0) || a.name.localeCompare(b.name))
     .slice(0, 12)
 
   return (
@@ -117,6 +123,32 @@ export default async function AllTimePage() {
                 </a>
                 <span className="text-[11px] text-field-muted">{r.seasons_played} seasons</span>
                 <span className="tabular w-8 text-right font-semibold text-field-ink">{r.gp}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {warLeaders.length > 0 && (
+        <section className="space-y-3 border-t border-field-line pt-6">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-field-ink">bWAR leaders</h2>
+            <p className="mt-1 text-sm text-field-muted">
+              Batting WAR — <strong>offense only</strong> (we don&rsquo;t track fielding). Runs a hitter added above a
+              replacement-level bat, scaled to our run environment. Accumulates with playing time.
+            </p>
+          </div>
+          <ol className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {warLeaders.map((r, i) => (
+              <li
+                key={r.player_id}
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-sm odd:bg-field-paper"
+              >
+                <span className="w-5 text-right font-semibold text-field-grass">{i + 1}</span>
+                <a href={`/players/${r.player_id}`} className="min-w-0 flex-1 truncate text-field-ink hover:underline">
+                  {r.name}
+                </a>
+                <span className="tabular w-10 text-right font-semibold text-field-ink">{(r.war ?? 0).toFixed(1)}</span>
               </li>
             ))}
           </ol>

@@ -14,6 +14,7 @@ const AWARD_EMOJI: Record<string, string> = {
   ringer_mvp: '⭐',
   most_improved: '📈',
   potg_award: '🐦',
+  war_mvp: '🃏',
 }
 
 function WinnerRow({ winner, linkBase }: { winner: AwardWinner; linkBase: string }) {

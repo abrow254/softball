@@ -109,6 +109,7 @@ export interface SeasonStatRow {
   ops: number
   iso: number
   xbh_pct: number
+  war?: number // Batting WAR (bWAR), attached in-app by lib/db/war.ts
 }
 
 // One row of the career_stats view: all-time totals across every season.
@@ -142,6 +143,7 @@ export interface CareerStatRow {
   ops: number
   iso: number
   xbh_pct: number
+  war?: number // Batting WAR (bWAR), attached in-app by lib/db/war.ts
 }
 
 // A season_stats row enriched with its season's label, for career timelines.

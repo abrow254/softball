@@ -16,6 +16,7 @@ export const SEASON_COLS: Col<SeasonStatRow>[] = [
   { key: 'slg', label: 'SLG', kind: 'rate', title: 'tb / ab' },
   { key: 'iso', label: 'ISO', kind: 'rate', title: 'slg - avg' },
   { key: 'xbh_pct', label: 'XBH%', kind: 'pct', title: '(2B + 3B + HR) / hits' },
+  { key: 'war', label: 'bWAR', kind: 'war', title: 'Batting WAR — offense-only wins above a replacement hitter, scaled to our run environment' },
 ]
 
 // All-time leaderboard.
@@ -34,6 +35,7 @@ export const CAREER_COLS: Col<CareerStatRow>[] = [
   { key: 'slg', label: 'SLG', kind: 'rate', title: 'tb / ab' },
   { key: 'iso', label: 'ISO', kind: 'rate', title: 'slg - avg' },
   { key: 'xbh_pct', label: 'XBH%', kind: 'pct', title: '(2B + 3B + HR) / hits' },
+  { key: 'war', label: 'bWAR', kind: 'war', title: 'Batting WAR — offense-only wins above a replacement hitter, scaled to our run environment' },
 ]
 
 // Player career page: season-by-season (first column is the season label).
@@ -51,4 +53,5 @@ export const PLAYER_SEASON_COLS: Col<PlayerSeasonRow>[] = [
   { key: 'slg', label: 'SLG', kind: 'rate', title: 'tb / ab' },
   { key: 'iso', label: 'ISO', kind: 'rate', title: 'slg - avg' },
   { key: 'xbh_pct', label: 'XBH%', kind: 'pct', title: '(2B + 3B + HR) / hits' },
+  { key: 'war', label: 'bWAR', kind: 'war', title: 'Batting WAR — offense-only wins above a replacement hitter, scaled to our run environment' },
 ]

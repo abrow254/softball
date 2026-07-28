@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { fmt3, fmtPct } from '@/lib/formulas'
 
-export type ColKind = 'text' | 'int' | 'rate' | 'pct'
+export type ColKind = 'text' | 'int' | 'rate' | 'pct' | 'war'
 
 export interface Col<T> {
   key: keyof T
@@ -34,7 +34,10 @@ function leaderValues<T extends BaseRow>(
     if (col.kind === 'text' || NO_LEADER.has(String(col.key))) continue
     const qualified = col.kind === 'int' ? rows : rows.filter((r) => r.ab >= rateMinAb)
     let max = 0
-    for (const r of qualified) max = Math.max(max, Number(r[col.key]))
+    for (const r of qualified) {
+      const n = Number(r[col.key])
+      if (Number.isFinite(n)) max = Math.max(max, n)
+    }
     if (max > 0) out[col.key] = max // >0 guard avoids crowning all-zero columns
   }
   return out
@@ -47,6 +50,8 @@ function formatCell<T>(row: T, col: Col<T>): string {
       return fmt3(Number(v))
     case 'pct':
       return fmtPct(Number(v))
+    case 'war':
+      return v == null ? '—' : Number(v).toFixed(1)
     default:
       return String(v)
   }
@@ -210,7 +215,7 @@ export function StatTable<T extends BaseRow>({
   // When sorting by a rate stat, players below the AB qualifier drop to the
   // bottom (and render dimmed) so small samples never top a rate leaderboard.
   const activeKind = useMemo(() => cols.find((c) => c.key === sortKey)?.kind, [cols, sortKey])
-  const isRateSort = activeKind === 'rate' || activeKind === 'pct'
+  const isRateSort = activeKind === 'rate' || activeKind === 'pct' || activeKind === 'war'
   const qualifies = (r: T) => r.ab >= qualifyMinAb
 
   const sorted = useMemo(() => {

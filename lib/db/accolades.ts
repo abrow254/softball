@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { CareerStatRow } from '@/lib/types'
 import { getSeasonAwards } from '@/lib/db/awards'
 import { getRecords } from '@/lib/db/records'
-import { getCareerStats } from '@/lib/db/career'
+import { getCareerWar } from '@/lib/db/war'
 import { isChampionSeason } from '@/lib/seasonRecords'
 
 // A player's "trophy case": season awards won, all-time leaderboard finishes,
@@ -45,6 +45,7 @@ const AWARD_EMOJI: Record<string, string> = {
   ringer_mvp: '🎖️',
   most_improved: '📈',
   potg_award: '🐦',
+  war_mvp: '🃏',
 }
 
 // 1-based rank of value (highest = 1); only meaningful when value > 0.
@@ -63,7 +64,7 @@ export async function getPlayerAccolades(playerId: string): Promise<PlayerAccola
   const [awardsBySeasons, records, career, rosterRes] = await Promise.all([
     Promise.all(seasons.map((s) => getSeasonAwards(s.id))),
     getRecords(),
-    getCareerStats(),
+    getCareerWar(),
     champIds.length > 0
       ? supabase.from('season_roster').select('season_id').eq('player_id', playerId).in('season_id', champIds)
       : Promise.resolve({ data: [], error: null }),
@@ -147,6 +148,11 @@ export async function getPlayerAccolades(playerId: string): Promise<PlayerAccola
         const mine = me[cat.key] as number
         const rank = rankOf(mine, qualified.map((c) => c[cat.key] as number))
         if (rank <= 3) allTimeRanks.push({ label: cat.label, emoji: cat.emoji, rank, value: fmt3(mine) })
+      }
+      // Batting WAR (offense-only), among the same qualified pool.
+      if (me.war != null) {
+        const rank = rankOf(me.war, qualified.map((c) => c.war ?? -Infinity))
+        if (rank <= 3) allTimeRanks.push({ label: 'bWAR', emoji: '🃏', rank, value: me.war.toFixed(1) })
       }
     }
     // PotG (from the all-time leaderboard in records).

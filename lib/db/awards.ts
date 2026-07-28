@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { SeasonStatRow, Season } from '@/lib/types'
 import { fmt3 } from '@/lib/formulas'
 import { qualifiedThreshold } from '@/lib/db/eligibility'
+import { getSeasonRunEnv } from '@/lib/db/war'
+import { computeWar } from '@/lib/war'
 
 // ---------- Types ------------------------------------------------------------
 
@@ -176,6 +178,22 @@ export async function getSeasonAwards(seasonId: string): Promise<SeasonAwardsRes
       }))
   }
 
+  // bWAR MVP: highest Batting WAR among qualified hitters (offense only).
+  const env = await getSeasonRunEnv(seasonId)
+  const warByPlayer = computeWar(allRows, env)
+  let warWinners: AwardWinner[] = []
+  if (qualified.length > 0) {
+    const warRows = qualified
+      .map((r) => ({ player_id: r.player_id, name: r.name, war: warByPlayer.get(r.player_id)?.war ?? 0 }))
+      .sort((a, b) => b.war - a.war)
+    const best = warRows[0]
+    if (best && best.war > 0) {
+      warWinners = warRows
+        .filter((r) => r.war === best.war)
+        .map((r) => ({ player_id: r.player_id, name: r.name, value: r.war.toFixed(1), statLine: 'offense only' }))
+    }
+  }
+
   // Ringer MVP: best OPS among non-regulars with ab >= 6
   const ringers = allRows.filter((r) => !r.is_regular && r.ab >= 6)
 
@@ -273,6 +291,16 @@ export async function getSeasonAwards(seasonId: string): Promise<SeasonAwardsRes
             label: 'Player of the Game Award',
             description: 'Most Player of the Game honours this season',
             winners: potgAwardWinners,
+          },
+        ]
+      : []),
+    ...(warWinners.length > 0
+      ? [
+          {
+            id: 'war_mvp',
+            label: 'Most Valuable (bWAR)',
+            description: 'Highest Batting WAR — offense only',
+            winners: warWinners,
           },
         ]
       : []),
