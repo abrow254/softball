@@ -144,7 +144,7 @@ export default async function PlayerCareerPage({ params }: { params: { id: strin
 
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">Career</h2>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+        <div className="grid grid-cols-3 gap-2 md:grid-cols-9">
           {tiles(career).map((t) => (
             <Tile key={t.label} {...t} />
           ))}

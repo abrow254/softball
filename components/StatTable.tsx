@@ -11,6 +11,7 @@ export interface Col<T> {
   label: string
   kind: ColKind
   title?: string
+  hideOnMobile?: boolean // lower-priority column: hidden on phones, shown ≥ sm
 }
 
 interface BaseRow {
@@ -104,8 +105,9 @@ function Table<T extends BaseRow>({
                   title={col.title}
                   onClick={() => onSort(col.key)}
                   className={[
-                    'cursor-pointer select-none whitespace-nowrap px-2.5 py-2 font-medium',
+                    'cursor-pointer select-none whitespace-nowrap px-2 py-2 font-medium',
                     i === 0 ? 'sticky left-0 z-10 bg-field-cream/95 text-left' : 'text-right',
+                    col.hideOnMobile ? 'hidden sm:table-cell' : '',
                     active ? 'text-field-ink' : '',
                   ].join(' ')}
                 >
@@ -144,10 +146,11 @@ function Table<T extends BaseRow>({
                     key={String(col.key)}
                     title={isLeader ? `Team leader · ${col.label}` : undefined}
                     className={[
-                      'whitespace-nowrap px-2.5 py-1.5',
+                      'whitespace-nowrap px-2 py-1.5',
                       i === 0
                         ? 'sticky left-0 z-10 bg-field-paper text-left font-medium text-field-ink'
                         : 'text-right text-field-ink',
+                      col.hideOnMobile ? 'hidden sm:table-cell' : '',
                       isLeader ? 'rounded bg-field-gold/30 font-semibold text-field-ink' : '',
                     ].join(' ')}
                   >
