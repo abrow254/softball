@@ -228,3 +228,59 @@ export async function getRecords(): Promise<RecordsResult> {
 
   return { singleGame, season, team, potgLeaders, onBaseStreak, multiHitStreak }
 }
+
+export interface SeasonHighlights {
+  singleGame: StatRecord[] // best single-game lines THIS season
+  teamWinStreak: number | null // longest win streak this season (>= 2)
+  onBaseStreak: StreakRecord | null
+  multiHitStreak: StreakRecord | null
+}
+
+// Season-scoped highlights, reusing the same helpers as the all-time records.
+export async function getSeasonHighlights(seasonId: string): Promise<SeasonHighlights> {
+  const supabase = createClient()
+  const [pglRes, gamesRes, playersRes] = await Promise.all([
+    supabase
+      .from('player_game_log')
+      .select('player_id, game_date, opponent, hits, tb, hr, rbi, runs, fc')
+      .eq('season_id', seasonId),
+    supabase
+      .from('games')
+      .select('game_date, our_runs, opp_runs, is_forfeit, forfeit_won')
+      .eq('season_id', seasonId)
+      .eq('is_aggregate', false),
+    supabase.from('players').select('id, name'),
+  ])
+  for (const r of [pglRes, gamesRes, playersRes]) if (r.error) throw new Error(r.error.message)
+
+  const pgl = (pglRes.data ?? []) as GameLogRow[]
+  const nameById = new Map((playersRes.data ?? []).map((p) => [p.id, p.name as string]))
+
+  const singleGame = [
+    singleGameRecord(pgl, 'Most hits, game', (r) => r.hits, nameById),
+    singleGameRecord(pgl, 'Most total bases, game', (r) => r.tb, nameById),
+    singleGameRecord(pgl, 'Most home runs, game', (r) => r.hr, nameById),
+  ].filter((r): r is StatRecord => r !== null)
+
+  // Longest team win streak this season (forfeit-aware).
+  const chrono = (gamesRes.data ?? [])
+    .filter((g) => g.game_date && (g.is_forfeit || (g.our_runs != null && g.opp_runs != null)))
+    .map((g) => ({
+      date: g.game_date as string,
+      won: g.is_forfeit ? g.forfeit_won === true : (g.our_runs as number) > (g.opp_runs as number),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+  let run = 0
+  let max = 0
+  for (const g of chrono) {
+    run = g.won ? run + 1 : 0
+    max = Math.max(max, run)
+  }
+
+  return {
+    singleGame,
+    teamWinStreak: max >= 2 ? max : null,
+    onBaseStreak: longestStreak(pgl, (r) => r.hits + r.fc > 0, nameById),
+    multiHitStreak: longestStreak(pgl, (r) => r.hits >= 2, nameById),
+  }
+}
