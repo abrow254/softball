@@ -24,6 +24,7 @@ const ADMIN_LINKS: NavLink[] = [
   { href: '/lineup', label: 'Lineup' },
   { href: '/games', label: 'Games' },
   { href: '/admin/roster', label: 'Roster' },
+  { href: '/admin/seasons', label: 'Seasons' },
 ]
 
 export function NavMenu({
