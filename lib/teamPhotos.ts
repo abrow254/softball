@@ -25,6 +25,7 @@ export const TEAM_PHOTOS: TeamPhoto[] = [
   { src: '/team/summer-2024.jpg', year: 2024, term: 'Summer', caption: 'Summer 2024' },
   { src: '/team/fall-2024.jpg', year: 2024, term: 'Fall', caption: 'Fall 2024' },
   { src: '/team/summer-2025.jpg', year: 2025, term: 'Summer', caption: 'Summer 2025' },
+  { src: '/team/summer-2026.jpg', year: 2026, term: 'Summer', caption: 'Summer 2026' },
 ]
 
 // Photo for a given season, if one exists.
