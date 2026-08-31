@@ -34,12 +34,22 @@ export default async function AllTimePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">All-time stats</h1>
-        <p className="mt-1 text-sm text-field-muted">
-          Career totals across every season. Players are grouped by tenure (career AB vs. the all-time leader):
-          Core, Regulars, then Ringers. Tap a name for a player&rsquo;s full history.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-field-ink">All-time stats</h1>
+          <p className="mt-1 text-sm text-field-muted">
+            Career totals across every season. Players are grouped by tenure (career AB vs. the all-time leader):
+            Core, Regulars, then Ringers. Tap a name for a player&rsquo;s full history.
+          </p>
+        </div>
+        <a
+          href="/api/export"
+          download
+          className="shrink-0 rounded-md border border-field-line-strong px-3 py-1.5 text-sm font-medium text-field-ink hover:bg-field-cream"
+          title="Download every season's data as one JSON file"
+        >
+          ⬇ Download all data
+        </a>
       </div>
 
       <StatTable
