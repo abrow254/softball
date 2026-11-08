@@ -32,9 +32,9 @@ const RESULT_CLASS: Record<'W' | 'L' | 'D', string> = {
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center">
-      <div className="tabular text-xl font-semibold text-field-ink">{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-field-muted">{label}</div>
+    <div className="rounded-2xl border border-field-line bg-field-paper px-3 py-4 text-left shadow-sm">
+      <div className="tabular font-display text-2xl font-bold text-field-ink">{value}</div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-field-muted">{label}</div>
     </div>
   )
 }
@@ -205,13 +205,14 @@ export default async function SchedulePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Schedule</h1>
+      <div className="border-b border-field-line pb-5">
+        <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-field-grass">Season hub</p>
+        <h1 className="font-display text-4xl font-bold uppercase tracking-tight text-field-ink">Schedule &amp; results</h1>
         {standings && <p className="mt-1 text-sm text-field-muted">{standings.season}</p>}
       </div>
 
       {/* Record summary */}
-      <section className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Tile label="Record" value={`${w}-${l}-${d}`} />
         <Tile label="Runs For" value={String(rf)} />
         <Tile label="Runs Against" value={String(ra)} />
@@ -222,10 +223,10 @@ export default async function SchedulePage() {
       {/* Upcoming */}
       {upcoming.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Upcoming</h2>
-          <ul className="divide-y divide-field-line overflow-hidden rounded-lg border border-field-line">
+          <h2 className="font-display text-xl font-bold uppercase tracking-wide text-field-ink">Upcoming games</h2>
+          <ul className="divide-y divide-field-line overflow-hidden rounded-2xl border border-field-line bg-field-paper shadow-sm">
             {upcoming.map((g) => (
-              <li key={`${g.date}-${g.opponent}`} className="flex items-center justify-between gap-3 bg-field-paper px-4 py-3">
+              <li key={`${g.date}-${g.opponent}`} className="flex items-center justify-between gap-3 bg-field-paper px-5 py-4">
                 <div className="min-w-0">
                   <div className="truncate font-medium text-field-ink">{g.opponent}</div>
                   <div className="text-xs text-field-muted">
@@ -245,7 +246,7 @@ export default async function SchedulePage() {
       {/* Results */}
       {played.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">Results</h2>
+          <h2 className="font-display text-xl font-bold uppercase tracking-wide text-field-ink">Final scores</h2>
           <ul className="divide-y divide-field-line overflow-hidden rounded-lg border border-field-line">
             {played.map((g) => {
               const res = resultOf(g)
@@ -259,7 +260,7 @@ export default async function SchedulePage() {
                     <div className="text-xs text-field-muted">{shortDate(g.date)}</div>
                     {info?.potgName && (
                       <div className="mt-0.5 space-y-0.5">
-                        <div className="text-xs text-field-grass font-semibold">⭐ {info.potgName}</div>
+                        <div className="text-xs text-field-grass font-semibold">Player of the game · {info.potgName}</div>
                         {info.potgLine && (
                           <div className="text-xs text-field-muted tabular">{info.potgLine}</div>
                         )}
@@ -267,7 +268,7 @@ export default async function SchedulePage() {
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    <span className="tabular text-sm text-field-ink">
+                    <span className="tabular font-display text-xl font-bold text-field-ink">
                       {g.ourScore}–{g.oppScore}
                     </span>
                     {res && <span className={`w-4 text-right font-semibold ${RESULT_CLASS[res]}`}>{res}</span>}
@@ -278,11 +279,11 @@ export default async function SchedulePage() {
               return (
                 <li key={`${g.date}-${g.opponent}`} className="bg-field-paper">
                   {gameLink ? (
-                    <Link href={gameLink} className="block px-4 py-3 transition-colors hover:bg-field-cream/50">
+                    <Link href={gameLink} className="block px-5 py-4 transition-colors hover:bg-field-cream/50">
                       {details}
                     </Link>
                   ) : (
-                    <div className="px-4 py-3">{details}</div>
+                    <div className="px-5 py-4">{details}</div>
                   )}
                 </li>
               )
