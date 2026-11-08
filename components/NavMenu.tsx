@@ -64,7 +64,10 @@ export function NavMenu({
           <Link
             key={l.href}
             href={l.href}
-            className={isActive(l.href) ? 'font-medium text-white' : 'text-white/85 hover:text-white'}
+            className={[
+              'relative inline-flex min-h-10 items-center border-b-[3px] pt-[3px] text-xs font-semibold uppercase tracking-[0.06em] transition-colors',
+              isActive(l.href) ? 'border-field-gold text-white' : 'border-transparent text-white/80 hover:border-white/40 hover:text-white',
+            ].join(' ')}
           >
             {l.label}
           </Link>
@@ -77,7 +80,7 @@ export function NavMenu({
                 key={l.href}
                 href={l.href}
                 className={
-                  isActive(l.href) ? 'font-medium text-field-gold' : 'text-field-gold/80 hover:text-field-gold'
+                  isActive(l.href) ? 'font-medium text-field-gold' : 'text-field-gold/85 hover:text-field-gold'
                 }
               >
                 {l.label}
@@ -147,8 +150,8 @@ export function NavMenu({
                 key={l.href}
                 href={l.href}
                 className={[
-                  'flex min-h-[44px] items-center rounded-md px-2 text-base',
-                  isActive(l.href) ? 'bg-white/10 font-medium text-white' : 'text-white/90',
+                  'flex min-h-[44px] items-center border-l-[3px] px-3 text-base',
+                  isActive(l.href) ? 'border-field-gold bg-white/10 font-semibold text-white' : 'border-transparent text-white/90',
                 ].join(' ')}
               >
                 {l.label}
