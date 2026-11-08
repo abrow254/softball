@@ -7,7 +7,7 @@ import type { Config } from 'tailwindcss'
 //   clay        → deep red        (errors / remove / loss)
 //   gold        → Cardinals yellow (accent: nav stripe, highlights)
 //   ink         → near-black      (text + outlines)
-//   cream/paper → off-white/white (background + cards)
+//   cream/paper → cool grey/white (background + cards)
 const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
@@ -18,12 +18,12 @@ const config: Config = {
     extend: {
       colors: {
         field: {
-          cream: '#FBF9F5',
+          cream: '#F5F7FA',
           paper: '#FFFFFF',
-          ink: '#17171A',
-          muted: '#5C6470',
-          line: '#E7E2D8',
-          'line-strong': '#CFC8BA',
+          ink: '#17202A',
+          muted: '#636B79',
+          line: '#E4E8EE',
+          'line-strong': '#CFD6E0',
           grass: '#C41E3A', // Cardinals red — primary accent
           'grass-light': '#E0566C',
           clay: '#A0162B', // deep red — errors / loss
