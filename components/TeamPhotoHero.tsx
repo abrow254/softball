@@ -39,7 +39,7 @@ export function TeamPhotoHero({ photos, subtitle }: TeamPhotoHeroProps) {
         {visible.map((src, i) => (
           <div
             key={src}
-            className={['absolute inset-y-0 right-0 w-full transition-opacity duration-1000 sm:w-[59%]', i === idx ? 'opacity-100' : 'opacity-0'].join(' ')}
+            className={['absolute inset-0 transition-opacity duration-1000 sm:left-auto sm:w-[59%]', i === idx ? 'opacity-100' : 'opacity-0'].join(' ')}
           >
             <Image
               src={src}
@@ -47,12 +47,12 @@ export function TeamPhotoHero({ photos, subtitle }: TeamPhotoHeroProps) {
               fill
               priority={i === 0}
               sizes="(max-width: 640px) 100vw, 700px"
-              className="object-cover object-center"
+              className="object-contain object-right sm:object-contain"
               onError={() => markFailed(src)}
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#C41E3A] via-[#C41E3A]/95 to-[#C41E3A]/45 sm:via-[#C41E3A]/90 sm:to-[#C41E3A]/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#C41E3A] via-[#C41E3A]/85 to-[#C41E3A]/25 sm:via-[#C41E3A]/90 sm:to-[#C41E3A]/10" />
         <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent 0px, transparent 8px, white 9px, transparent 10px)' }} />
       </div>
 
