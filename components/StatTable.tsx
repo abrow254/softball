@@ -93,26 +93,33 @@ function Table<T extends BaseRow>({
 }) {
   return (
     <div className="relative">
-      <div className="overflow-x-auto rounded-lg border border-field-line">
-      <table className="tabular min-w-full border-collapse text-sm">
+      <div className="overflow-x-auto rounded-xl border border-field-line bg-white shadow-sm" role="region" aria-label="Sortable player statistics" tabIndex={0}>
+      <table className="stats-table tabular min-w-full border-collapse text-sm">
         <thead>
-          <tr className="bg-field-cream/70 text-field-muted">
+          <tr className="bg-field-cream text-field-muted">
             {cols.map((col, i) => {
               const active = col.key === sortKey
               return (
                 <th
                   key={String(col.key)}
                   title={col.title}
-                  onClick={() => onSort(col.key)}
+                  scope="col"
+                  aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   className={[
-                    'cursor-pointer select-none whitespace-nowrap px-2 py-2 font-medium',
-                    i === 0 ? 'sticky left-0 z-10 bg-field-cream/95 text-left' : 'text-right',
-                    col.hideOnMobile ? 'hidden sm:table-cell' : '',
-                    active ? 'text-field-ink' : '',
+                    'select-none whitespace-nowrap border-b border-field-line px-3 py-3 text-[11px] font-bold uppercase tracking-[0.07em]',
+                    i === 0 ? 'sticky left-0 z-10 bg-field-cream text-left' : 'text-right',
+                    active ? 'text-field-grass' : '',
                   ].join(' ')}
                 >
-                  {col.label}
-                  {active && <span aria-hidden>{dir === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  <button
+                    type="button"
+                    onClick={() => onSort(col.key)}
+                    className="inline-flex min-h-6 items-center gap-1 hover:text-field-grass focus-visible:rounded"
+                    title={col.title ?? `Sort by ${col.label}`}
+                  >
+                    {col.label}
+                    {active && <span aria-hidden>{dir === 'asc' ? '↑' : '↓'}</span>}
+                  </button>
                 </th>
               )
             })}
@@ -123,7 +130,7 @@ function Table<T extends BaseRow>({
             <tr
               key={rowKey(row)}
               className={[
-                'border-t border-field-line even:bg-field-cream/30',
+                'border-b border-field-line/70 even:bg-field-cream/70 transition-colors',
                 dimmed?.(row) ? 'opacity-45' : '',
               ].join(' ')}
             >
@@ -146,12 +153,11 @@ function Table<T extends BaseRow>({
                     key={String(col.key)}
                     title={isLeader ? `Team leader · ${col.label}` : undefined}
                     className={[
-                      'whitespace-nowrap px-2 py-1.5',
+                      'whitespace-nowrap px-3 py-2.5',
                       i === 0
                         ? 'sticky left-0 z-10 bg-field-paper text-left font-medium text-field-ink'
                         : 'text-right text-field-ink',
-                      col.hideOnMobile ? 'hidden sm:table-cell' : '',
-                      isLeader ? 'rounded bg-field-gold/30 font-semibold text-field-ink' : '',
+                      isLeader ? 'bg-field-gold/20 font-bold text-field-ink' : '',
                     ].join(' ')}
                   >
                     {content}
@@ -163,10 +169,7 @@ function Table<T extends BaseRow>({
         </tbody>
       </table>
       </div>
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-field-paper to-transparent"
-        aria-hidden
-      />
+
     </div>
   )
 }
@@ -205,6 +208,20 @@ export function StatTable<T extends BaseRow>({
   const rowKey = (row: T) => String(row[rowKeyField])
   const [sortKey, setSortKey] = useState<keyof T>(defaultSortKey)
   const [dir, setDir] = useState<'asc' | 'desc'>(defaultDir)
+  const [view, setView] = useState<'standard' | 'expanded'>('standard')
+  // The same underlying rows, values, sorting and leader rules in both views.
+  // 'Standard' trims secondary rate/split columns, 'Expanded' exposes all.
+  const visibleCols = useMemo(
+    () => view === 'expanded' ? cols : cols.filter((col) => !col.hideOnMobile),
+    [cols, view],
+  )
+  const chooseView = (next: 'standard' | 'expanded') => {
+    setView(next)
+    if (next === 'standard' && cols.some((col) => col.key === sortKey && col.hideOnMobile)) {
+      setSortKey(defaultSortKey)
+      setDir(defaultDir)
+    }
+  }
 
   function onSort(key: keyof T) {
     if (key === sortKey) {
@@ -256,21 +273,47 @@ export function StatTable<T extends BaseRow>({
         ]
       : null
 
+
+  const viewToggle = (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-field-muted">
+        {rows.length} players · Tap a heading to sort
+      </p>
+      <div className="inline-flex rounded-full border border-field-line bg-field-cream p-1" role="group" aria-label="Choose table columns">
+        {(['standard', 'expanded'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={view === option}
+            onClick={() => chooseView(option)}
+            className={`min-h-8 rounded-full px-3 text-xs font-semibold transition-colors ${view === option ? 'bg-field-grass text-white shadow-sm' : 'text-field-muted hover:text-field-ink'}`}
+          >
+            {option === 'standard' ? 'Standard' : 'Expanded'}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   if (!sectionList) {
     return (
-      <Table rows={sorted} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
+      <div>
+        {viewToggle}
+        <Table rows={sorted} cols={visibleCols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
+      </div>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {viewToggle}
       {sectionList.map(({ label, filter }) => {
         const sectionRows = sorted.filter(filter)
         if (sectionRows.length === 0) return null
         return (
           <section key={label}>
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">{label}</h2>
-            <Table rows={sectionRows} cols={cols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
+            <Table rows={sectionRows} cols={visibleCols} sortKey={sortKey} dir={dir} onSort={onSort} linkBase={linkBase} rowKey={rowKey} leaders={leaders} dimmed={dimmed} />
           </section>
         )
       })}
