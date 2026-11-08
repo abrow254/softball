@@ -8,12 +8,12 @@ export const metadata = { title: 'Standings — The Softball Team' }
 function PoolTable({ pool }: { pool: StandingsPool }) {
   return (
     <section>
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-field-muted">{pool.name}</h2>
+      <h2 className="mb-3 font-display text-xl font-bold uppercase tracking-wide text-field-ink">{pool.name}</h2>
       <div className="relative">
-      <div className="overflow-x-auto rounded-lg border border-field-line">
+      <div className="overflow-x-auto rounded-2xl border border-field-line bg-field-paper shadow-sm">
         <table className="tabular min-w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-field-cream/70 text-field-muted">
+            <tr className="bg-field-cream text-field-muted uppercase text-[11px] tracking-wide">
               <th className="px-2.5 py-2 text-right font-medium">#</th>
               <th className="sticky left-0 z-10 bg-field-cream/95 px-2.5 py-2 text-left font-medium">Team</th>
               <th className="px-2 py-2 text-right font-medium" title="Wins">W</th>
@@ -31,20 +31,20 @@ function PoolTable({ pool }: { pool: StandingsPool }) {
                 key={`${pool.name}-${r.team}`}
                 className={[
                   'border-t border-field-line',
-                  r.isUs ? 'bg-field-gold/25 font-semibold' : 'even:bg-field-cream/30',
+                  r.isUs ? 'bg-field-gold/15 font-bold' : 'even:bg-field-cream/30',
                 ].join(' ')}
               >
-                <td className="px-2.5 py-1.5 text-right text-field-muted">{r.rank ?? '—'}</td>
+                <td className="px-2.5 py-3 text-right text-field-muted">{r.rank ?? '—'}</td>
                 <td
                   className={[
                     'sticky left-0 z-10 whitespace-nowrap px-2.5 py-1.5 text-left text-field-ink',
-                    r.isUs ? 'bg-[#FFF6BF]' : 'bg-field-paper',
+                    r.isUs ? 'bg-[#FFF4CC]' : 'bg-field-paper',
                   ].join(' ')}
                 >
                   {r.team}
-                  {r.isUs && <span className="ml-1.5 text-xs font-medium text-field-grass">You</span>}
+                  {r.isUs && <span className="ml-1.5 text-xs font-bold text-field-grass">Our team</span>}
                 </td>
-                <td className="px-2 py-1.5 text-right text-field-ink">{r.w}</td>
+                <td className="px-2 py-3 text-right text-field-ink">{r.w}</td>
                 <td className="px-2 py-1.5 text-right text-field-ink">{r.l}</td>
                 <td className="px-2 py-1.5 text-right text-field-ink">{r.d}</td>
                 <td className="px-2 py-1.5 text-right text-field-ink">{r.pf}</td>
@@ -100,7 +100,8 @@ export default async function StandingsPage() {
   return (
     <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Standings</h1>
+        <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-field-grass">League table</p>
+        <h1 className="font-display text-4xl font-bold uppercase tracking-tight text-field-ink">Standings</h1>
         <p className="mt-1 text-sm text-field-muted">{standings.season}</p>
       </div>
 

@@ -7,9 +7,9 @@ import { SEASON_RECORDS, ALL_TIME, CHAMPIONSHIPS } from '@/lib/seasonRecords'
 
 function AllTimeTile({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center">
-      <div className={`tabular text-xl font-semibold ${tone ?? 'text-field-ink'}`}>{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-field-muted">{label}</div>
+    <div className="rounded-2xl border border-field-line bg-field-paper px-3 py-4 text-left shadow-sm">
+      <div className={`tabular font-display text-2xl font-bold ${tone ?? 'text-field-ink'}`}>{value}</div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-field-muted">{label}</div>
     </div>
   )
 }
@@ -36,7 +36,7 @@ export default async function AllTimePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-field-ink">All-time stats</h1>
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-field-grass">Team history</p><h1 className="font-display text-4xl font-bold uppercase tracking-tight text-field-ink">All-time stats</h1>
           <p className="mt-1 text-sm text-field-muted">
             Career totals across every season. Players are grouped by tenure (career AB vs. the all-time leader):
             Core, Regulars, then Ringers. Tap a name for a player&rsquo;s full history.
@@ -74,7 +74,7 @@ export default async function AllTimePage() {
       </p>
 
       <section className="space-y-4 border-t border-field-line pt-6">
-        <h2 className="text-xl font-semibold tracking-tight text-field-ink">Team through the years</h2>
+        <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-field-ink">Team through the years</h2>
 
         {CHAMPIONSHIPS.length > 0 && (
           <div className="rounded-lg border border-field-gold/50 bg-field-gold/15 p-4">
@@ -97,7 +97,7 @@ export default async function AllTimePage() {
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <AllTimeTile label="All-time" value={`${ALL_TIME.w}-${ALL_TIME.l}${ALL_TIME.d > 0 ? `-${ALL_TIME.d}` : ''}`} />
           <AllTimeTile label="Titles" value={String(CHAMPIONSHIPS.length)} tone="text-field-gold" />
           <AllTimeTile
@@ -109,7 +109,7 @@ export default async function AllTimePage() {
           <AllTimeTile label="RS/game" value={ALL_TIME.rsPerG.toFixed(1)} />
           <AllTimeTile label="Seasons" value={String(SEASON_RECORDS.length)} />
         </div>
-        <div className="rounded-lg border border-field-line bg-field-paper p-3">
+        <div className="rounded-2xl border border-field-line bg-field-paper p-4 shadow-sm">
           <TeamTrendChart records={SEASON_RECORDS} />
           <p className="mt-1 text-center text-[11px] text-field-muted">Run differential by season</p>
         </div>

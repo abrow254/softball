@@ -45,9 +45,9 @@ const normOpp = (s: string | null | undefined) =>
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center">
-      <div className="tabular text-xl font-semibold text-field-ink">{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-field-muted">{label}</div>
+    <div className="rounded-xl border border-field-line bg-field-paper px-4 py-4 text-left shadow-sm">
+      <div className="tabular font-display text-[clamp(1.25rem,3vw,1.85rem)] font-bold leading-tight text-field-ink">{value}</div>
+      <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-field-muted">{label}</div>
     </div>
   )
 }
@@ -55,7 +55,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 function SectionHeading({ children, href, cta }: { children: React.ReactNode; href?: string; cta?: string }) {
   return (
     <div className="flex items-baseline justify-between">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-field-muted">{children}</h2>
+      <h2 className="font-display text-base font-bold uppercase tracking-wide text-field-ink">{children}</h2>
       {href && cta && (
         <Link href={href} className="text-xs font-medium text-field-grass hover:underline">
           {cta} →
@@ -83,11 +83,11 @@ function LeaderList({ rows, fmt }: { rows: SeasonStatRow[]; fmt: (r: SeasonStatR
 }
 
 const QUICK_LINKS = [
-  { href: '/schedule', label: 'Schedule', emoji: '📅' },
-  { href: '/standings', label: 'Standings', emoji: '🏟️' },
-  { href: '/stats', label: 'Stats', emoji: '📊' },
-  { href: '/awards', label: 'Awards', emoji: '🏆' },
-  { href: '/players', label: 'All-Time', emoji: '📜' },
+  { href: '/schedule', label: 'Schedule' },
+  { href: '/standings', label: 'Standings' },
+  { href: '/stats', label: 'Stats' },
+  { href: '/awards', label: 'Awards' },
+  { href: '/players', label: 'All-Time' },
 ]
 
 export default async function HomePage() {
@@ -169,105 +169,80 @@ export default async function HomePage() {
   const fmt3 = (n: number) => n.toFixed(3).replace(/^0/, '')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <TeamPhotoHero photos={allPhotoSrcs()} subtitle={standings?.season ?? season?.label ?? null} />
 
-      {/* Record summary */}
+      {/* Most recent game: a single readable scoreboard instead of two competing results cards. */}
+      {lastGame && (
+        <section className="overflow-hidden rounded-[20px] border border-field-line bg-field-paper shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-field-line bg-field-cream px-5 py-3 sm:px-6">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-field-muted">
+              Final <span className="mx-1.5 text-field-grass">/</span> {shortDate(lastGame.date)}
+            </p>
+            {lastGameId && (
+              <Link href={`/games/${lastGameId}/card`} className="text-xs font-bold text-field-grass hover:underline">
+                Box score <span aria-hidden>↗</span>
+              </Link>
+            )}
+          </div>
+          <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-field-muted">The Softball Team vs.</p>
+              <h2 className="mt-1 font-display text-2xl font-bold uppercase leading-tight text-field-ink sm:text-3xl">
+                {lastGame.opponent}
+              </h2>
+              {lastPotg && (
+                <p className="mt-2 text-xs text-field-muted">
+                  <span className="font-semibold text-field-grass">Player of the game:</span> {lastPotg.name}
+                  {lastPotg.line ? ` · ${lastPotg.line}` : ''}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-4 self-start sm:self-auto">
+              {lastRes && (
+                <span className={`flex h-10 w-10 items-center justify-center rounded-full border-2 border-current font-display text-xl font-bold ${RESULT_CLASS[lastRes]}`}>
+                  {lastRes === 'D' ? 'T' : lastRes}
+                </span>
+              )}
+              <span className="tabular font-display text-5xl font-bold leading-none tracking-tight text-field-ink sm:text-6xl">
+                {lastGame.ourScore}–{lastGame.oppScore}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Record: explicit W-L-T and games played, with clean numerical hierarchy. */}
       {played.length > 0 && (
-        <section className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          <Tile label="Record" value={`${w}-${l}-${d}`} />
-          <Tile label="Run Diff" value={diff > 0 ? `+${diff}` : String(diff)} />
-          <Tile label="Runs For" value={String(rf)} />
+        <section aria-label="Season at a glance" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+          <Tile label="W–L–T" value={`${w}–${l}–${d}`} />
+          <Tile label="Games played" value={`${played.length} games`} />
+          <Tile label="Run differential" value={diff > 0 ? `+${diff}` : String(diff)} />
           {ourStanding?.rank != null ? (
             <Tile label={ourStanding.pool} value={ordinal(ourStanding.rank)} />
           ) : (
-            <Tile label="Runs Against" value={String(ra)} />
+            <Tile label="Runs scored" value={String(rf)} />
           )}
         </section>
       )}
 
-      {/* Next game + Last result */}
-      <section className="grid gap-4 sm:grid-cols-2">
-        {/* Next game */}
-        <div className="space-y-2">
-          <SectionHeading href="/schedule" cta="Schedule">
-            Next game
-          </SectionHeading>
-          {nextGame ? (
-            <Link
-              href="/schedule"
-              className="block rounded-lg border border-field-line bg-field-paper p-4 transition-colors hover:bg-field-cream/50"
-            >
-              <div className="text-lg font-semibold text-field-ink">{nextGame.opponent}</div>
-              <div className="mt-0.5 text-sm text-field-muted">
-                {shortDate(nextGame.date)}
-                {nextGame.time ? ` · ${nextGame.time}` : ''}
-              </div>
-
-              {oppAnalysis ? (
-                <div className="mt-2">
-                  <OpponentScouting analysis={oppAnalysis} record={recordByTeam.get(nextGame.opponent)} />
-                </div>
-              ) : (
-                recordByTeam.get(nextGame.opponent) && (
-                  <div className="mt-2 inline-block rounded bg-field-cream px-2 py-0.5 text-xs font-medium text-field-muted">
-                    {recordByTeam.get(nextGame.opponent)}
-                  </div>
-                )
-              )}
-            </Link>
-          ) : (
-            <div className="rounded-lg border border-dashed border-field-line bg-field-paper p-4 text-sm text-field-muted">
-              No upcoming games scheduled.
+      {/* In-season next game: hidden rather than showing an empty tile all winter. */}
+      {nextGame && (
+        <section className="space-y-2">
+          <SectionHeading href="/schedule" cta="Full schedule">Up next</SectionHeading>
+          <Link
+            href="/schedule"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-field-line bg-field-paper px-5 py-4 transition-colors hover:border-field-grass"
+          >
+            <div>
+              <p className="font-display text-xl font-bold uppercase text-field-ink">{nextGame.opponent}</p>
+              <p className="mt-1 text-sm text-field-muted">{shortDate(nextGame.date)}{nextGame.time ? ` · ${nextGame.time}` : ''}</p>
             </div>
-          )}
-        </div>
-
-        {/* Last result */}
-        <div className="space-y-2">
-          <SectionHeading>Last result</SectionHeading>
-          {lastGame ? (
-            (() => {
-              const inner = (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-lg font-semibold text-field-ink">{lastGame.opponent}</div>
-                      <div className="mt-0.5 text-sm text-field-muted">{shortDate(lastGame.date)}</div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="tabular text-lg font-semibold text-field-ink">
-                        {lastGame.ourScore}–{lastGame.oppScore}
-                      </span>
-                      {lastRes && <span className={`font-bold ${RESULT_CLASS[lastRes]}`}>{lastRes}</span>}
-                    </div>
-                  </div>
-                  {lastPotg && (
-                    <div className="mt-2 border-t border-field-line pt-2">
-                      <div className="text-xs font-semibold text-field-grass">⭐ {lastPotg.name}</div>
-                      {lastPotg.line && <div className="text-xs text-field-muted tabular">{lastPotg.line}</div>}
-                    </div>
-                  )}
-                </>
-              )
-              return lastGameId ? (
-                <Link
-                  href={`/games/${lastGameId}/card`}
-                  className="block rounded-lg border border-field-line bg-field-paper p-4 transition-colors hover:bg-field-cream/50"
-                >
-                  {inner}
-                </Link>
-              ) : (
-                <div className="rounded-lg border border-field-line bg-field-paper p-4">{inner}</div>
-              )
-            })()
-          ) : (
-            <div className="rounded-lg border border-dashed border-field-line bg-field-paper p-4 text-sm text-field-muted">
-              No games played yet.
-            </div>
-          )}
-        </div>
-      </section>
+            <span className="text-sm font-bold text-field-grass">Matchup ↗</span>
+            {oppAnalysis && <div className="w-full border-t border-field-line pt-3"><OpponentScouting analysis={oppAnalysis} record={recordByTeam.get(nextGame.opponent)} /></div>}
+          </Link>
+        </section>
+      )}
 
       {/* Season leaders */}
       {leaders && (leaders.avg.length > 0 || leaders.hr.length > 0) && (
@@ -275,7 +250,7 @@ export default async function HomePage() {
           <SectionHeading href="/stats" cta="Full stats">
             Season leaders
           </SectionHeading>
-          <div className="grid gap-4 rounded-lg border border-field-line bg-field-paper p-4 sm:grid-cols-3">
+          <div className="grid gap-5 rounded-xl border border-field-line bg-field-paper p-5 shadow-sm sm:grid-cols-3">
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-field-muted">Average</h3>
               <LeaderList rows={leaders.avg} fmt={(r) => fmt3(r.avg)} />
@@ -327,10 +302,10 @@ export default async function HomePage() {
           <Link
             key={q.href}
             href={q.href}
-            className="flex items-center gap-2 rounded-lg border border-field-line bg-field-paper px-3 py-3 font-medium text-field-ink transition-colors hover:border-field-grass hover:bg-field-grass/5"
+            className="flex items-center justify-between gap-2 rounded-xl border border-field-line bg-field-paper px-4 py-4 text-sm font-semibold text-field-ink transition-colors hover:border-field-grass hover:text-field-grass"
           >
-            <span aria-hidden>{q.emoji}</span>
             {q.label}
+            <span className="text-field-grass" aria-hidden>↗</span>
           </Link>
         ))}
       </section>

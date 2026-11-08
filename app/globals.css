@@ -28,6 +28,46 @@ body {
   font-feature-settings: 'tnum';
 }
 
+/* Shared refinement for dense, sortable baseball stats. */
+::selection {
+  background: #fedb00;
+  color: #17202a;
+}
+
+:focus-visible {
+  outline: 2px solid #c41e3a;
+  outline-offset: 3px;
+}
+
+.stats-table th,
+.stats-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-table tbody tr:nth-child(odd) > td:first-child {
+  background: #fff;
+}
+
+.stats-table tbody tr:nth-child(even) > td:first-child {
+  background: #f5f7fa;
+}
+
+.stats-table tbody tr:hover > td,
+.stats-table tbody tr:hover > td:first-child {
+  background: #fff6f7;
+}
+
+.stats-table th:first-child,
+.stats-table td:first-child {
+  box-shadow: 1px 0 0 #e4e8ee;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .softball-hero * {
+    transition-duration: 0ms !important;
+  }
+}
+
 /* ---- Print: only the printable card shows, fit one page ---- */
 @media print {
   body {

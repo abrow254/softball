@@ -9,11 +9,11 @@ export async function NavBar() {
   const isAdmin = current?.role === 'admin'
 
   return (
-    <header className="no-print relative border-b-4 border-field-gold bg-field-grass text-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <header className="no-print relative z-30 border-b border-white/15 bg-field-grass text-white">
+      <div className="mx-auto flex min-h-[68px] max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2 font-display text-lg font-semibold uppercase tracking-wide text-white"
+          className="flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wide text-white"
         >
           <Image src="/favicon-96x96.png" alt="" width={28} height={28} className="h-7 w-7" priority />
           <span>
