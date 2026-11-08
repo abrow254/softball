@@ -34,24 +34,33 @@ export function TeamPhotoHero({ photos, subtitle }: TeamPhotoHeroProps) {
     })
 
   return (
-    <section className="softball-hero relative isolate overflow-hidden rounded-[22px] bg-[#C41E3A] text-white sm:min-h-[320px]">
-      {/* On phones, keep the team photo separate from the copy so faces stay visible. */}
-      <div className="relative h-[230px] w-full overflow-hidden bg-[#7e182c] sm:absolute sm:inset-y-0 sm:right-0 sm:h-full sm:w-[59%]" aria-label="Team photo">
+    <section className="softball-hero relative isolate flex min-h-[260px] items-center overflow-hidden rounded-[22px] bg-field-grass text-white sm:min-h-[278px]">
+      <div className="absolute inset-0 overflow-hidden" aria-hidden>
         {visible.map((src, i) => (
-          <div key={src} className={['absolute inset-0 transition-opacity duration-1000', i === idx ? 'opacity-100' : 'opacity-0'].join(' ')}>
-            <Image src={src} alt="The Softball Team" fill priority={i === 0}
+          <div
+            key={src}
+            className={['absolute inset-0 transition-opacity duration-1000 sm:left-auto sm:w-[59%]', i === idx ? 'opacity-100' : 'opacity-0'].join(' ')}
+          >
+            <Image
+              src={src}
+              alt=""
+              fill
+              priority={i === 0}
               sizes="(max-width: 640px) 100vw, 700px"
-              className="object-contain object-center"
-              onError={() => markFailed(src)} />
+              className="object-contain object-right sm:object-contain"
+              onError={() => markFailed(src)}
+            />
           </div>
         ))}
-        <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-[#C41E3A] via-[#C41E3A]/40 to-transparent sm:block" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#C41E3A] via-[#C41E3A]/85 to-[#C41E3A]/25 sm:via-[#C41E3A]/90 sm:to-[#C41E3A]/10" />
+        <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'repeating-linear-gradient(135deg, transparent 0px, transparent 8px, white 9px, transparent 10px)' }} />
       </div>
-      <div className="relative z-10 px-5 py-7 sm:flex sm:min-h-[320px] sm:w-[63%] sm:flex-col sm:justify-center sm:px-9 sm:py-8">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.20em] text-white/85 sm:text-xs">
+
+      <div className="relative z-10 w-full px-5 py-7 sm:px-9 sm:py-8">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.24em] text-white/80 sm:text-xs">
           Forest City Slo-Pitch <span className="mx-2 text-field-gold">/</span> Since 2022
         </p>
-        <h1 className="font-display text-[clamp(2.9rem,10vw,5.5rem)] font-bold uppercase leading-[0.91] tracking-[-0.035em]">
+        <h1 className="max-w-2xl font-display text-[clamp(2.95rem,10.4vw,5.5rem)] font-bold uppercase leading-[0.91] tracking-[-0.035em]">
           <span className="block">The Softball</span>
           <span className="block">Team<span className="text-field-gold">.</span></span>
         </h1>
@@ -63,8 +72,16 @@ export function TeamPhotoHero({ photos, subtitle }: TeamPhotoHeroProps) {
             Schedule
           </Link>
         </div>
-        {subtitle && <p className="mt-3 text-xs font-medium text-white/80">{subtitle}</p>}
+        {subtitle && <p className="mt-3 text-xs font-medium text-white/75">{subtitle}</p>}
       </div>
+
+      {visible.length > 1 && (
+        <div className="absolute bottom-4 right-5 z-10 hidden gap-1.5 sm:flex" aria-hidden>
+          {visible.map((src, i) => (
+            <span key={src} className={['h-1 w-4 rounded-full transition-colors', i === idx ? 'bg-field-gold' : 'bg-white/40'].join(' ')} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }
