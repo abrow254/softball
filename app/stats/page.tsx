@@ -8,9 +8,9 @@ import type { Season } from '@/lib/types'
 
 function RecordTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-field-line bg-field-paper px-3 py-2 text-center">
-      <div className="tabular text-lg font-semibold text-field-ink">{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-field-muted">{label}</div>
+    <div className="rounded-2xl border border-field-line bg-field-paper px-4 py-4 text-left shadow-sm">
+      <div className="tabular font-display text-2xl font-bold text-field-ink">{value}</div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-field-muted">{label}</div>
     </div>
   )
 }
@@ -107,7 +107,7 @@ export default async function StatsPage({
   return (
     <div className="space-y-6" style={{ paddingBottom: 'env(safe-area-inset-bottom, 80px)' }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-field-ink">Season stats</h1>
+        <div><p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-field-grass">The numbers</p><h1 className="font-display text-4xl font-bold uppercase tracking-tight text-field-ink">Season stats</h1></div>
         <SeasonSelector seasons={seasons} selectedId={selectedId} />
       </div>
 
@@ -123,7 +123,7 @@ export default async function StatsPage({
 
       {/* Photo on one side, record stacked on the other */}
       {(photo || summary) && (
-        <section className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-stretch">
           {photo && (
             <div className="sm:w-1/2 sm:shrink-0">
               <SeasonPhotoBanner src={photo.src} caption={photo.caption} />
@@ -131,7 +131,7 @@ export default async function StatsPage({
           )}
           {summary && (
             <div className="flex-1">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <RecordTile label="Record" value={`${summary.w}-${summary.l}-${summary.d}`} />
                 <RecordTile label="Win %" value={fmtPct(summary.winPct)} />
                 <RecordTile
