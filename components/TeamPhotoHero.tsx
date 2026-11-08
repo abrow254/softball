@@ -66,4 +66,5 @@ export function TeamPhotoHero({ photos, subtitle }: TeamPhotoHeroProps) {
         {subtitle && <p className="mt-3 text-xs font-medium text-white/80">{subtitle}</p>}
       </div>
     </section>
-  )}
+  )
+}
